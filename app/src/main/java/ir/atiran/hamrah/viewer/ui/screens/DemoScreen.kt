@@ -295,7 +295,7 @@ private fun DemoTab(label: String, selected: Boolean, onClick: () -> Unit) {
             .clip(RoundedCornerShape(50))
             .background(
                 if (selected) Brush.horizontalGradient(extras.goldGradient)
-                else scheme.surfaceVariant.copy(alpha = 0.5f)
+                else Brush.solidColor(scheme.surfaceVariant.copy(alpha = 0.5f))
             )
             .border(
                 width = 1.dp,
@@ -521,7 +521,7 @@ private fun HeroBanner(progress: Float) {
                 )
             }
             Text(
-                formatInt((1245000000L * progress)) + " ریال",
+                formatInt((1245000000L * progress).toLong()) + " ریال",
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Black,
                 color = scheme.primary,
