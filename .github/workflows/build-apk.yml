@@ -88,7 +88,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: AtiranHamrahViewer-v3.4.0-debug-apk
+          name: AtiranHamrahViewer-v3.5.0-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -96,8 +96,8 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.4.0-debug
-          name: "M•REPORT v3.4.0 — Intelligence، Universal Search، Product 360 و مانیتور اتصال"
+          tag_name: v3.5.0-debug
+          name: "M•REPORT v3.5.0 — آیکون سه‌بعدی M، نوار ناوبری یک‌نگاه و هارمونی دارک"
           body: |
             نسخه ۲.۱.۰ — نمایشگر مدیریت دیتابیس آجیل و خشکبار
 

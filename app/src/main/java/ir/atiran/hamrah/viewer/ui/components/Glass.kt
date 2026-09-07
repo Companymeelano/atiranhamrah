@@ -328,7 +328,7 @@ fun GlassAction(
                     ambientColor = glow.copy(alpha = 0.35f),
                     spotColor = glow.copy(alpha = 0.55f),
                 )
-                .size(48.dp)
+                .size(50.dp)
                 .clip(CircleShape)
                 .background(extras.glassStrong)
                 .border(1.dp, extras.hairline, CircleShape)
@@ -342,17 +342,18 @@ fun GlassAction(
             // هاله بسیار کم پشت آیکون — با فشردن محو می‌شود
             Box(
                 Modifier
-                    .size(26.dp)
+                    .size(27.dp)
                     .clip(CircleShape)
                     .background(glow.copy(alpha = haloAlpha))
             )
-            Icon(icon, contentDescription = label, tint = glow, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = label, tint = glow, modifier = Modifier.size(21.dp))
         }
-        Spacer(Modifier.size(5.dp))
+        Spacer(Modifier.size(6.dp))
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
         )
     }
 }

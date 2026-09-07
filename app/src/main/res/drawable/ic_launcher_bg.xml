@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- پس‌زمینه آیکون M•REPORT — اُبسیدین عمیق با دو نور محیطی محو -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#1A1533"
+                android:centerColor="#0C0B14"
+                android:endColor="#07070A" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.30"
+                android:centerY="0.28"
+                android:gradientRadius="60dp"
+                android:startColor="#3D6E4EFF"
+                android:endColor="#006E4EFF" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.78"
+                android:centerY="0.82"
+                android:gradientRadius="55dp"
+                android:startColor="#2EE8CFA0"
+                android:endColor="#00E8CFA0" />
+        </shape>
+    </item>
+</layer-list>

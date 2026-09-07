@@ -70,6 +70,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -220,11 +221,18 @@ fun DemoScreen(vm: AppViewModel) {
     AmbientBackground(enabled = vm.experience.ambient) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                ),
                 title = {
                     Text(
                         "M•REPORT",
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
+                        style = TextStyle(
+                            brush = Brush.horizontalGradient(extras.brand),
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                        ),
                     )
                 },
                 navigationIcon = {
@@ -250,20 +258,13 @@ fun DemoScreen(vm: AppViewModel) {
                 },
             )
 
-            // تب‌های خلوت
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                tabs.forEachIndexed { i, t ->
-                    MTab(t, tab == i) {
-                        tab = i
-                        SoundFx.soft()
-                    }
-                }
+            // نوار ناوبری — همه بخش‌ها همیشه در یک نگاه
+            MrTabBar(
+                selected = tab,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            ) { i ->
+                tab = i
+                SoundFx.soft()
             }
 
             Column(
@@ -307,6 +308,76 @@ fun DemoScreen(vm: AppViewModel) {
 
     productOpen?.let { p ->
         Product360(p, onDismiss = { productOpen = null })
+    }
+}
+
+// ============================================================ نوار ناوبری اصلی
+/**
+ * شش بخش M•REPORT همیشه در یک صفحه — بدون اسکرول:
+ * آیکون اختصاصی + برچسب، حالت انتخاب با شیشه‌ی رنگی و نقطه امضای برند.
+ */
+@Composable
+private fun MrTabBar(
+    selected: Int,
+    modifier: Modifier = Modifier,
+    onSelect: (Int) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    val icons = listOf(
+        MrIcons.Overview, MrIcons.Customers, MrIcons.Products,
+        MrIcons.Reports, MrIcons.Alerts, MrIcons.Notifications,
+    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(extras.glass)
+            .border(1.dp, extras.hairline, RoundedCornerShape(20.dp))
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        tabs.forEachIndexed { i, label ->
+            val sel = selected == i
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (sel) scheme.primary.copy(alpha = 0.13f) else Color.Transparent)
+                    .border(
+                        1.dp,
+                        if (sel) scheme.primary.copy(alpha = 0.45f) else Color.Transparent,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .clickable { onSelect(i) }
+                    .padding(vertical = 7.dp),
+            ) {
+                Icon(
+                    icons[i],
+                    contentDescription = label,
+                    tint = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                    modifier = Modifier.size(19.dp),
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                    color = if (sel) scheme.onSurface else scheme.onSurfaceVariant,
+                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(3.dp))
+                // نقطه امضای برند زیر بخش فعال
+                Box(
+                    Modifier
+                        .size(if (sel) 3.5.dp else 0.dp)
+                        .clip(CircleShape)
+                        .background(scheme.primary)
+                )
+            }
+        }
     }
 }
 
@@ -397,7 +468,7 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
         }
     }
 
-    // ---------- وضعیت اتصال و همگام‌سازی ----------
+    // ---------- وضعیت اتصال و همگام‌سازی آتیران ----------
     GlassCard {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -407,37 +478,70 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
                     enabled = !refreshing,
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    if (refreshing) "در حال دریافت اطلاعات..." else "متصل به سرویس آتیران",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-                Spacer(Modifier.weight(1f))
-                Box(
-                    Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (refreshing) "در حال دریافت اطلاعات..." else "متصل به سرویس آتیران",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "آخرین دریافت اطلاعات: " + fmtTime(vm.lastSyncMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                // دکمه دریافت مجدد — Pill شیشه‌ای
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
                         .background(extras.glassStrong)
-                        .border(1.dp, extras.hairline, CircleShape)
-                        .clickable { onRefresh(false) },
-                    contentAlignment = Alignment.Center,
+                        .border(1.dp, extras.hairline, RoundedCornerShape(50))
+                        .clickable { onRefresh(false) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "دریافت مجدد", tint = scheme.primary, modifier = Modifier.size(16.dp))
+                    Icon(MrIcons.Sync, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "دریافت مجدد",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
-            Text(
-                "آخرین دریافت اطلاعات: " + fmtTime(vm.lastSyncMs),
-                style = MaterialTheme.typography.labelSmall,
-                color = scheme.onSurfaceVariant,
-            )
+            // انتخاب بازه به‌روزرسانی — سگمنت هم‌عرض
+            Text("به‌روزرسانی خودکار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text("به‌روزرسانی خودکار:", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                 listOf("دستی" to 0, "۳۰ ثانیه" to 30, "۱ دقیقه" to 60, "۵ دقیقه" to 300).forEach { (label, sec) ->
-                    MTab(label, intervalSec == sec) { intervalSec = sec; SoundFx.soft() }
+                    val sel = intervalSec == sec
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (sel) scheme.primary.copy(alpha = 0.14f) else extras.glass)
+                            .border(
+                                1.dp,
+                                if (sel) scheme.primary.copy(alpha = 0.45f) else extras.hairline,
+                                RoundedCornerShape(12.dp),
+                            )
+                            .clickable { intervalSec = sec; SoundFx.soft() }
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
