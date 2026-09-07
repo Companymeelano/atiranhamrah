@@ -3,6 +3,7 @@ package ir.atiran.hamrah.viewer.ui.components
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
@@ -14,12 +15,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +54,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import kotlin.math.PI
@@ -136,7 +142,7 @@ fun AmbientBackground(
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    corner: Dp = 20.dp,
+    corner: Dp = 24.dp,
     fill: Color = LocalThemeExtras.current.glass,
     glow: Boolean = true,
     touchLight: Boolean = true,
@@ -235,7 +241,7 @@ fun GlassCard(
                     } else Modifier
                 ),
         ) {
-            Box(Modifier.padding(14.dp)) { content() }
+            Box(Modifier.padding(16.dp)) { content() }
         }
     }
 }
@@ -296,9 +302,26 @@ fun GlassAction(
     onClick: () -> Unit,
 ) {
     val extras = LocalThemeExtras.current
+    // فیزیک نور: با فشردن، دکمه به داخل فرو می‌رود و نورش کم می‌شود — نه بیرون‌زدن
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = tween(120),
+        label = "pressScale",
+    )
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (pressed) 0.05f else 0.16f,
+        animationSpec = tween(120),
+        label = "pressHalo",
+    )
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .shadow(
                     elevation = 3.dp,
                     shape = CircleShape,
@@ -309,15 +332,19 @@ fun GlassAction(
                 .clip(CircleShape)
                 .background(extras.glassStrong)
                 .border(1.dp, extras.hairline, CircleShape)
-                .clickable(onClick = onClick),
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClick = onClick,
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            // هاله بسیار کم پشت آیکون
+            // هاله بسیار کم پشت آیکون — با فشردن محو می‌شود
             Box(
                 Modifier
                     .size(26.dp)
                     .clip(CircleShape)
-                    .background(glow.copy(alpha = 0.16f))
+                    .background(glow.copy(alpha = haloAlpha))
             )
             Icon(icon, contentDescription = label, tint = glow, modifier = Modifier.size(20.dp))
         }
@@ -326,6 +353,39 @@ fun GlassAction(
             label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+// ============================================================ عدد قهرمان
+/**
+ * تایپوگرافی اعداد M•REPORT — عدد مثل لوگو تایپ می‌شود:
+ * واحد کوچک و کم‌رنگ در بالای عدد (سبک مجلات ممتاز)،
+ * عدد درشت با وزن Black و ارقام جدولی (tnum) تا ستون‌ها نلرزند.
+ */
+@Composable
+fun NumberHero(
+    value: String,
+    unit: String? = null,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    fontSize: TextUnit = 33.sp,
+) {
+    Column(modifier) {
+        if (unit != null) {
+            Text(
+                unit,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
+            )
+            Spacer(Modifier.height(2.dp))
+        }
+        Text(
+            value,
+            color = color,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
         )
     }
 }

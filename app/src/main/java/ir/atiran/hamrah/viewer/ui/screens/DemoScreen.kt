@@ -98,6 +98,8 @@ import ir.atiran.hamrah.viewer.ui.components.CalmPulse
 import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
+import ir.atiran.hamrah.viewer.ui.components.MrIcons
+import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.delay
@@ -124,14 +126,14 @@ private val productShare = listOf(
 )
 
 private data class Hero(
-    val title: String, val value: String, val desc: String,
+    val title: String, val value: String, val unit: String, val desc: String,
     val icon: ImageVector, val spark: List<Int>,
 )
 private val heroes = listOf(
-    Hero("مشتریان", "۲٬۱۲۰", "مشتری فعال در این دوره", Icons.Filled.Group, listOf(40, 48, 52, 58, 55, 64, 72)),
-    Hero("کالاها", "۳۴۸", "قلم کالای فعال", Icons.Filled.Inventory2, listOf(60, 58, 62, 65, 63, 68, 70)),
-    Hero("گردش مالی", "۸۶۴م", "گردش حساب این ماه (تومان)", Icons.Filled.Paid, listOf(35, 45, 42, 58, 64, 72, 88)),
-    Hero("هشدارها", "۱۵", "مورد نیازمند توجه", Icons.Filled.Warning, listOf(20, 35, 28, 42, 38, 30, 25)),
+    Hero("مشتریان", "۲٬۱۲۰", "نفر", "مشتری فعال در این دوره", MrIcons.Customers, listOf(40, 48, 52, 58, 55, 64, 72)),
+    Hero("کالاها", "۳۴۸", "قلم", "قلم کالای فعال", MrIcons.Products, listOf(60, 58, 62, 65, 63, 68, 70)),
+    Hero("گردش مالی", "۸۶۴م", "تومان", "گردش حساب این ماه", MrIcons.Trend, listOf(35, 45, 42, 58, 64, 72, 88)),
+    Hero("هشدارها", "۱۵", "مورد", "نیازمند توجه", MrIcons.Alerts, listOf(20, 35, 28, 42, 38, 30, 25)),
 )
 
 private data class P3(val name: String, val v: Float)
@@ -206,7 +208,7 @@ fun DemoScreen(vm: AppViewModel) {
                 },
                 actions = {
                     IconButton(onClick = { paletteOpen = true; SoundFx.soft() }) {
-                        Icon(Icons.Filled.Search, contentDescription = "جستجوی هوشمند")
+                        Icon(MrIcons.Search, contentDescription = "جستجوی هوشمند")
                     }
                 },
             )
@@ -453,7 +455,7 @@ private fun HeroCard(h: Hero, motion: Boolean, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     GlassCard(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
@@ -467,12 +469,7 @@ private fun HeroCard(h: Hero, motion: Boolean, modifier: Modifier = Modifier) {
                 Spacer(Modifier.width(8.dp))
                 Text(h.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             }
-            Text(
-                h.value,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                color = scheme.primary,
-            )
+            NumberHero(h.value, h.unit, color = scheme.primary)
             Text(h.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             MicroArea(h.spark.map { it.toFloat() }, scheme.primary)
         }
@@ -502,6 +499,9 @@ private fun MicroArea(values: List<Float>, color: Color) {
             }
         }
         drawPath(line, color = color, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+        // نقطه امضا در انتهای روند
+        drawCircle(color.copy(alpha = 0.25f), radius = 4.dp.toPx(), center = pts.last())
+        drawCircle(color, radius = 2.2.dp.toPx(), center = pts.last())
     }
 }
 
@@ -572,6 +572,13 @@ private fun GlowAreaChart(
             drawPath(line, color = extras.gold.copy(alpha = 0.10f), style = Stroke(7.dp.toPx(), cap = StrokeCap.Round))
             drawPath(line, color = extras.gold.copy(alpha = 0.18f), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
             drawPath(line, color = extras.gold, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+            // امضای برند: نقطه‌های پر ظریف روی همه نقاط منحنی
+            pts.forEachIndexed { i, pt ->
+                if (i != selected) {
+                    drawCircle(extras.gold.copy(alpha = 0.18f), radius = 4.5.dp.toPx(), center = pt)
+                    drawCircle(extras.gold, radius = 2.2.dp.toPx(), center = pt)
+                }
+            }
             // نقطه انتخاب‌شده
             selected?.let { i ->
                 val p = pts[i]
@@ -752,9 +759,9 @@ private fun CustomersTab(onOpen: (CustomerD) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(extras.glass)
-                        .border(1.dp, extras.hairline, RoundedCornerShape(14.dp))
+                        .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
                         .clickable { onOpen(c); SoundFx.soft() }
                         .padding(horizontal = 12.dp, vertical = 11.dp),
                 ) {
@@ -791,14 +798,14 @@ private fun CustomersTab(onOpen: (CustomerD) -> Unit) {
                             Modifier
                                 .fillMaxWidth()
                                 .height(5.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(scheme.surfaceVariant)
                         ) {
                             Box(
                                 Modifier
                                     .fillMaxWidth(c.share)
                                     .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp))
+                                    .clip(RoundedCornerShape(4.dp))
                                     .background(Brush.horizontalGradient(extras.goldGradient))
                             )
                         }
@@ -1039,9 +1046,9 @@ private fun NotificationsTab(vm: AppViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(extras.glass)
-                    .border(1.dp, extras.hairline, RoundedCornerShape(14.dp))
+                    .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
                     .padding(horizontal = 12.dp, vertical = 11.dp),
             ) {
                 CalmPulse(n.color, dotSize = 8.dp, enabled = false)
@@ -1102,9 +1109,9 @@ private fun CommandPalette(onDismiss: () -> Unit, onSelect: (Command) -> Unit) {
                 modifier = Modifier
                     .padding(top = 90.dp, start = 20.dp, end = 20.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(scheme.surface.copy(alpha = 0.97f))
-                    .border(1.dp, extras.hairline, RoundedCornerShape(20.dp))
+                    .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
                     .clickable(enabled = false) {},
             ) {
                 OutlinedTextField(
@@ -1112,8 +1119,8 @@ private fun CommandPalette(onDismiss: () -> Unit, onSelect: (Command) -> Unit) {
                     onValueChange = { q = it },
                     placeholder = { Text("جستجو کنید... (نام مشتری، چک‌های سررسید، گزارش)") },
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    shape = RoundedCornerShape(14.dp),
+                    leadingIcon = { Icon(MrIcons.Search, contentDescription = null) },
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                 )
                 Column(Modifier.padding(bottom = 10.dp)) {
@@ -1223,12 +1230,11 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                                 }
                             }
                             Column {
-                                Text("مانده حساب", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-                                Text(
-                                    c.balance + " تومان",
-                                    style = MaterialTheme.typography.displaySmall,
-                                    fontWeight = FontWeight.Black,
+                                NumberHero(
+                                    c.balance,
+                                    unit = "مانده حساب · تومان",
                                     color = if (c.balance.startsWith("+")) extras.positive else scheme.error,
+                                    fontSize = 30.sp,
                                 )
                             }
                         }
@@ -1340,12 +1346,22 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     GlassCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = scheme.primary,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // نقطه امضای برند قبل از عنوان بخش
+                Box(
+                    Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(scheme.primary)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.primary,
+                )
+            }
             content()
         }
     }
