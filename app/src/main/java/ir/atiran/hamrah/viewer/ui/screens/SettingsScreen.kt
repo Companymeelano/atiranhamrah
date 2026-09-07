@@ -56,13 +56,13 @@ fun SettingsScreen(vm: AppViewModel, initial: AtiranSettings) {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("تنظیمات اتصال به سرور آتیران") },
-            navigationIcon = if (initial.configured) {
-                {
+            navigationIcon = {
+                if (initial.configured) {
                     IconButton(onClick = { vm.backFromSettings() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت")
                     }
                 }
-            } else null,
+            },
         )
 
         Column(

@@ -59,8 +59,8 @@ fun <T> BrowseListScreen(
     localFilter: (T, String) -> Boolean = { _, _ -> true },
     itemKey: (T) -> Any? = { null },
     emptyText: String = "داده‌ای یافت نشد",
-    itemContent: @Composable (T) -> Unit,
     onItemTap: (T) -> Unit = {},
+    itemContent: @Composable (T) -> Unit,
 ) {
     val settings by vm.settings.collectAsState()
     val repo = remember(settings.serverUrl, settings.cpuId) { vm.repository() }
