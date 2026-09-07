@@ -2,6 +2,7 @@ package ir.atiran.hamrah.viewer.ui
 
 import android.app.Application
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -21,6 +22,9 @@ sealed class Screen {
     data object Login : Screen()
     data object Tables : Screen()
     data class TableData(val schema: String, val table: String) : Screen()
+
+    /** حالت نمایشی (دمو) — بدون نیاز به اتصال دیتابیس */
+    data object Demo : Screen()
 }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -37,7 +41,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var db by mutableStateOf<SqlServerDb?>(null)
         private set
 
+    /** تم فعال برنامه */
+    var themeId by mutableIntStateOf(0)
+        private set
+
     init {
+        // اعمال تم ذخیره‌شده به‌صورت زنده
+        viewModelScope.launch {
+            store.themeId.collect { themeId = it }
+        }
+
         // اتصال خودکار اگر رمز ذخیره‌شده داریم؛ در غیر این صورت صفحه ورود
         viewModelScope.launch {
             val s = settings.first()
@@ -54,6 +67,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 screen = Screen.Login
             }
         }
+    }
+
+    /** تغییر تم — بلافاصله اعمال و ذخیره می‌شود */
+    fun setTheme(id: Int) {
+        themeId = id
+        viewModelScope.launch { store.setTheme(id) }
     }
 
     /**
