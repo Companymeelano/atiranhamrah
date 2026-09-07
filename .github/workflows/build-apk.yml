@@ -59,7 +59,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: AtiranHamrahViewer-debug-apk
+          name: AtiranHamrahViewer-v2-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -67,12 +67,18 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0-debug
-          name: "آتیران همراه v1.1.0 — APK قابل نصب"
+          tag_name: v2.0.0-debug
+          name: "آتیران همراه v2.0.0 — اتصال مستقیم SQL Server"
           body: |
-            نسخه ۱.۱.۰ نمایشگر دیتابیس آتیران همراه (debug، امضاشده با کلید debug).
+            نسخه ۲.۰.۰ — نمایشگر مدیریت دیتابیس با اتصال مستقیم به Microsoft SQL Server.
 
-            **نصب:** فایل `app-debug.apk` را دانلود و روی گوشی اندروید ۷ به بالا نصب کنید
-            (فعال‌کردن «نصب از منابع ناشناس» لازم است).
+            **تغییرات:**
+            - اتصال مستقیم به SQL Server (JDBC + TLS) — بدون سرویس WCF
+            - ورود در ابتدای برنامه با نام کاربری/رمز SQL Server
+            - مرور همه جداول دیتابیس با تعداد رکورد و حجم
+            - مشاهده صفحه‌بندی‌شده رکوردها + جستجوی سرور-محور + جزئیات رکورد
+            - طراحی جدید صفحه ورود
+
+            **نصب:** فایل `app-debug.apk` را دانلود و روی گوشی اندروید ۸ به بالا نصب کنید.
           files: app/build/outputs/apk/debug/app-debug.apk
           prerelease: true

@@ -6,141 +6,87 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import ir.atiran.hamrah.viewer.data.AtiranClient
-import ir.atiran.hamrah.viewer.data.AtiranRepository
-import ir.atiran.hamrah.viewer.data.AtiranSettings
+import ir.atiran.hamrah.viewer.data.DbSettings
 import ir.atiran.hamrah.viewer.data.SettingsStore
+import ir.atiran.hamrah.viewer.data.SqlServerDb
+import ir.atiran.hamrah.viewer.data.TableInfo
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** اقلام منوی اصلی (صفحات مشاهده داده) */
-enum class Section(val title: String) {
-    Customers("مشتریان"),
-    Goods("کالاها و قیمت‌ها"),
-    Inventory("موجودی انبارها"),
-    Invoices("فاکتورها"),
-    Checks("چک‌ها"),
-    Messages("پیام‌ها"),
-    Misc("گزارش‌ها و اطلاعات"),
-}
-
 sealed class Screen {
-    data object Loading : Screen()
-    data object Settings : Screen()
+    /** در حال اتصال خودکار اولیه */
+    data object Boot : Screen()
     data object Login : Screen()
-    data object Home : Screen()
-    data class Browse(val section: Section) : Screen()
+    data object Tables : Screen()
+    data class TableData(val schema: String, val table: String) : Screen()
 }
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
+class AppViewModel(application: Application) : AndroidViewModel() {
 
     private val store = SettingsStore(application)
 
-    val settings: StateFlow<AtiranSettings> = store.settings
-        .stateIn(viewModelScope, SharingStarted.Eagerly, AtiranSettings())
+    val settings = store.settings
+        .stateIn(viewModelScope, SharingStarted.Eagerly, DbSettings())
 
-    var screen by mutableStateOf<Screen>(Screen.Loading)
+    var screen by mutableStateOf<Screen>(Screen.Boot)
         private set
 
-    var busy by mutableStateOf(false)
+    /** اتصال فعال (بعد از ورود موفق) */
+    var db by mutableStateOf<SqlServerDb?>(null)
         private set
-
-    var error by mutableStateOf<String?>(null)
-        private set
-
-    /** صفحه‌ای که پس از بستن تنظیمات باید به آن برگردیم */
-    private var settingsBackTarget: Screen? = null
 
     init {
-        // فقط یک‌بار مقصد اولیه را تعیین می‌کنیم؛ تغییرات بعدی تنظیمات
-        // نباید کاربر را از صفحه فعلی (مثلاً Home) بیرون بیندازد.
+        // اتصال خودکار اگر رمز ذخیره‌شده داریم؛ در غیر این صورت صفحه ورود
         viewModelScope.launch {
             val s = settings.first()
-            screen = if (s.configured && s.serverUrl.isNotBlank() && s.cpuId.isNotBlank()) {
-                Screen.Login
-            } else {
-                Screen.Settings
-            }
-        }
-    }
-
-    private var cachedRepo: AtiranRepository? = null
-    private var repoCacheKey: String? = null
-
-    /** Stable repository instance while server/CPUID unchanged. */
-    fun repository(): AtiranRepository? {
-        val s = settings.value
-        val key = s.serverUrl.trim().trimEnd('/') + "|" + s.cpuId.trim()
-        if (cachedRepo == null || repoCacheKey != key) {
-            repoCacheKey = key
-            cachedRepo = if (s.serverUrl.isBlank() || s.cpuId.isBlank()) {
-                null
-            } else {
-                AtiranRepository(AtiranClient(s))
-            }
-        }
-        return cachedRepo
-    }
-
-    fun saveSettings(s: AtiranSettings, afterSave: (() -> Unit)? = null) {
-        viewModelScope.launch {
-            busy = true
-            error = null
-            try {
-                store.save(s)
-                if (afterSave != null) {
-                    afterSave()
-                } else {
-                    screen = settingsBackTarget ?: Screen.Login
+            if (s.password.isNotBlank() && s.host.isNotBlank()) {
+                val candidate = SqlServerDb(s)
+                try {
+                    candidate.test()
+                    db = candidate
+                    screen = Screen.Tables
+                } catch (_: Exception) {
+                    screen = Screen.Login
                 }
-            } catch (e: Exception) {
-                error = e.message ?: "خطا در ذخیره تنظیمات"
-            } finally {
-                busy = false
+            } else {
+                screen = Screen.Login
             }
         }
     }
 
-    fun goSettings() {
-        settingsBackTarget = when (screen) {
-            is Screen.Home, is Screen.Browse -> Screen.Home
-            is Screen.Login -> Screen.Login
-            else -> null
-        }
-        screen = Screen.Settings
+    /**
+     * ورود / تغییر اتصال — اعتبارنامه‌ها با بازکردن اتصال واقعی بررسی می‌شوند.
+     * رمز فقط در صورت فعال‌بودن «مرا به خاطر بسپار» ذخیره می‌شود.
+     */
+    suspend fun login(cfg: DbSettings) {
+        val candidate = SqlServerDb(cfg)
+        candidate.test() // در صورت خطا exception پرتاب می‌شود
+        store.save(cfg.copy(password = if (cfg.remember) cfg.password else ""))
+        db = candidate
+        screen = Screen.Tables
     }
 
-    /** بازگشت از صفحه تنظیمات به صفحه قبلی */
-    fun backFromSettings() {
-        screen = settingsBackTarget ?: Screen.Login
-        settingsBackTarget = null
+    fun openTable(t: TableInfo) {
+        screen = Screen.TableData(t.schema, t.name)
     }
 
+    fun backToTables() {
+        screen = Screen.Tables
+    }
+
+    /** رفتن به صفحه ورود برای تغییر تنظیمات اتصال */
     fun goLogin() {
         screen = Screen.Login
     }
 
-    fun goHome() {
-        screen = Screen.Home
-    }
-
-    fun openSection(section: Section) {
-        screen = Screen.Browse(section)
-    }
-
-    fun backToHome() {
-        screen = Screen.Home
-    }
-
+    /** خروج — رمز ذخیره‌شده پاک می‌شود */
     fun logout() {
         viewModelScope.launch {
-            store.clear()
-            error = null
-            settingsBackTarget = null
-            screen = Screen.Settings
+            store.clearPassword()
+            db = null
+            screen = Screen.Login
         }
     }
 }

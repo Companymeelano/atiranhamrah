@@ -8,98 +8,44 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** Everything the app needs to talk to a given Atiran server. */
-data class AtiranSettings(
-    val serverUrl: String = "",
-    val cpuId: String = "",
-    val ownerNum: String = "",
-    val inventoryNum: String = "",
-    val atiranNum: String = "",
-    val carrierNum: String = "",
-    val activeLine: String = "",
-    val serverAdd: String = "",
-    val username: String = "",
-    val password: String = "",
-    val shMo: String = "",
-    val visitorId: String = "",
-    val appId: String = "",
-    val configured: Boolean = false,
-) {
-    fun normalizedServer(): String = serverUrl.trim().trimEnd('/')
+private val Context.dataStore by preferencesDataStore(name = "atiran_db_settings")
 
-    fun toSetInfo(): SetInfo = SetInfo(
-        shmo = shMo.ifBlank { null },
-        password = password.ifBlank { null },
-        _ownerNum = ownerNum.ifBlank { null },
-        _InventoryNum = inventoryNum.ifBlank { null },
-        _AtiranNum = atiranNum.ifBlank { null },
-        _carrierNum = carrierNum.ifBlank { null },
-        _ActiveLine = activeLine.ifBlank { null },
-        _serverAdd = serverAdd.ifBlank { null },
-        VisitorID = visitorId.toIntOrNull(),
-    )
-}
-
-private val Context.dataStore by preferencesDataStore(name = "atiran_settings")
-
+/** ذخیره‌سازی تنظیمات اتصال (DataStore) */
 class SettingsStore(private val context: Context) {
 
     private object Keys {
-        val serverUrl = stringPreferencesKey("serverUrl")
-        val cpuId = stringPreferencesKey("cpuId")
-        val ownerNum = stringPreferencesKey("ownerNum")
-        val inventoryNum = stringPreferencesKey("inventoryNum")
-        val atiranNum = stringPreferencesKey("atiranNum")
-        val carrierNum = stringPreferencesKey("carrierNum")
-        val activeLine = stringPreferencesKey("activeLine")
-        val serverAdd = stringPreferencesKey("serverAdd")
-        val username = stringPreferencesKey("username")
+        val host = stringPreferencesKey("host")
+        val port = stringPreferencesKey("port")
+        val database = stringPreferencesKey("database")
+        val user = stringPreferencesKey("user")
         val password = stringPreferencesKey("password")
-        val shMo = stringPreferencesKey("shMo")
-        val visitorId = stringPreferencesKey("visitorId")
-        val appId = stringPreferencesKey("appId")
-        val configured = booleanPreferencesKey("configured")
+        val remember = booleanPreferencesKey("remember")
     }
 
-    val settings: Flow<AtiranSettings> = context.dataStore.data.map { p ->
-        AtiranSettings(
-            serverUrl = p[Keys.serverUrl] ?: "",
-            cpuId = p[Keys.cpuId] ?: "",
-            ownerNum = p[Keys.ownerNum] ?: "",
-            inventoryNum = p[Keys.inventoryNum] ?: "",
-            atiranNum = p[Keys.atiranNum] ?: "",
-            carrierNum = p[Keys.carrierNum] ?: "",
-            activeLine = p[Keys.activeLine] ?: "",
-            serverAdd = p[Keys.serverAdd] ?: "",
-            username = p[Keys.username] ?: "",
+    val settings: Flow<DbSettings> = context.dataStore.data.map { p ->
+        DbSettings(
+            host = p[Keys.host] ?: DbSettings.DEFAULT_HOST,
+            port = p[Keys.port] ?: "1433",
+            database = p[Keys.database] ?: DbSettings.DEFAULT_DB,
+            user = p[Keys.user] ?: DbSettings.DEFAULT_USER,
             password = p[Keys.password] ?: "",
-            shMo = p[Keys.shMo] ?: "",
-            visitorId = p[Keys.visitorId] ?: "",
-            appId = p[Keys.appId] ?: "",
-            configured = p[Keys.configured] ?: false,
+            remember = p[Keys.remember] ?: true,
         )
     }
 
-    suspend fun save(s: AtiranSettings, markConfigured: Boolean = true) {
+    suspend fun save(s: DbSettings) {
         context.dataStore.edit { p ->
-            p[Keys.serverUrl] = s.serverUrl.trim()
-            p[Keys.cpuId] = s.cpuId.trim()
-            p[Keys.ownerNum] = s.ownerNum.trim()
-            p[Keys.inventoryNum] = s.inventoryNum.trim()
-            p[Keys.atiranNum] = s.atiranNum.trim()
-            p[Keys.carrierNum] = s.carrierNum.trim()
-            p[Keys.activeLine] = s.activeLine.trim()
-            p[Keys.serverAdd] = s.serverAdd.trim()
-            p[Keys.username] = s.username.trim()
+            p[Keys.host] = s.host.trim()
+            p[Keys.port] = s.port.trim().ifBlank { "1433" }
+            p[Keys.database] = s.database.trim()
+            p[Keys.user] = s.user.trim()
             p[Keys.password] = s.password
-            p[Keys.shMo] = s.shMo.trim()
-            p[Keys.visitorId] = s.visitorId.trim()
-            p[Keys.appId] = s.appId.trim()
-            p[Keys.configured] = markConfigured
+            p[Keys.remember] = s.remember
         }
     }
 
-    suspend fun clear() {
-        context.dataStore.edit { it.clear() }
+    /** فقط رمز را پاک می‌کند (خروج)؛ بقیه تنظیمات برای ورود بعدی می‌ماند */
+    suspend fun clearPassword() {
+        context.dataStore.edit { it.remove(Keys.password) }
     }
 }
