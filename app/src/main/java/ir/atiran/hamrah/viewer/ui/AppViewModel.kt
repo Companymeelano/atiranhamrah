@@ -23,7 +23,7 @@ sealed class Screen {
     data class TableData(val schema: String, val table: String) : Screen()
 }
 
-class AppViewModel(application: Application) : AndroidViewModel() {
+class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val store = SettingsStore(application)
 

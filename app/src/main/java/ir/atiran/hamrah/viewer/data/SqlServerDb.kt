@@ -215,7 +215,7 @@ class SqlServerDb(private val cfg: DbSettings) {
                     val md = rs.metaData
                     val n = md.columnCount // ستون آخر = _rn
                     val colNames = (1 until n).map { md.getColumnLabel(it) }
-                    val out = ArrayList<List<String?>()
+                    val out = ArrayList<List<String?>>()
                     while (rs.next()) {
                         val row = ArrayList<String?>(n - 1)
                         for (ci in 1 until n) {

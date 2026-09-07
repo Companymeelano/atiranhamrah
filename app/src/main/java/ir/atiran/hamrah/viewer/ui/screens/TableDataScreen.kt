@@ -168,7 +168,7 @@ fun TableDataScreen(vm: AppViewModel, schema: String, table: String) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Arrangement.Center),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             ) {
                 OutlinedButton(
                     onClick = { if (pageIdx > 0) pageIdx -= 1 },

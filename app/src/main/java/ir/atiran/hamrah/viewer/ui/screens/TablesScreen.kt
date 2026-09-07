@@ -60,7 +60,6 @@ fun TablesScreen(vm: AppViewModel) {
     var error by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     var reloadTick by remember { mutableStateOf(0) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(reloadTick) {
         loading = true
