@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -195,7 +196,6 @@ private val reportFilters = listOf("تاریخ", "گروه", "مشتری", "کا
 @Composable
 fun DemoScreen(vm: AppViewModel) {
     BackHandler { vm.closeDemo() }
-    BackHandler(enabled = customerOpen != null) { customerOpen = null }
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     var tab by remember { mutableIntStateOf(0) }
@@ -215,6 +215,7 @@ fun DemoScreen(vm: AppViewModel) {
             }
         }
     }
+    BackHandler(enabled = customerOpen != null) { customerOpen = null }
 
     AmbientBackground(enabled = vm.experience.ambient) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -1592,7 +1593,7 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
         AnimatedVisibility(
             visible = shown,
             enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(280)),
-            modifier = Modifier.align(Alignment.CenterVertically),
+            modifier = Modifier.align(Alignment.Center),
         ) {
             Column(
                 Modifier
