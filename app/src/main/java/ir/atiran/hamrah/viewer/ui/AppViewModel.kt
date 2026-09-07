@@ -3,6 +3,7 @@ package ir.atiran.hamrah.viewer.ui
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -56,6 +57,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val wowSweepDone = store.wowSweepDone
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** ترتیب کارت‌های داشبورد — شخصی‌سازی کاربر */
+    val heroOrder = store.heroOrder
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** زمان آخرین دریافت اطلاعات (Auto Refresh) */
+    var lastSyncMs by mutableLongStateOf(System.currentTimeMillis())
+        private set
+
+    fun touchSync() {
+        lastSyncMs = System.currentTimeMillis()
+    }
+
     init {
         SoundFx.init(application)
 
@@ -105,6 +118,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** جاروی نور اجرا شد — دیگر هرگز تکرار نشود */
     fun markWowDone() {
         viewModelScope.launch { store.setWowSweepDone() }
+    }
+
+    /** ذخیره چیدمان شخصی داشبورد */
+    fun setHeroOrder(order: List<Int>) {
+        viewModelScope.launch { store.setHeroOrder(order.joinToString(",")) }
     }
 
     /**

@@ -1,6 +1,9 @@
 package ir.atiran.hamrah.viewer.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Animatable
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,7 +39,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
@@ -68,6 +76,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +112,7 @@ import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 // ============================================================ داده نمونه
@@ -185,11 +195,26 @@ private val reportFilters = listOf("تاریخ", "گروه", "مشتری", "کا
 @Composable
 fun DemoScreen(vm: AppViewModel) {
     BackHandler { vm.closeDemo() }
+    BackHandler(enabled = customerOpen != null) { customerOpen = null }
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     var tab by remember { mutableIntStateOf(0) }
     var paletteOpen by remember { mutableStateOf(false) }
     var customerOpen by remember { mutableStateOf<CustomerD?>(null) }
+    var productOpen by remember { mutableStateOf<P3?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val refresh: (Boolean) -> Unit = { silent ->
+        if (!refreshing) {
+            refreshing = true
+            scope.launch {
+                delay(900)
+                vm.touchSync()
+                refreshing = false
+                if (!silent) SoundFx.soft()
+            }
+        }
+    }
 
     AmbientBackground(enabled = vm.experience.ambient) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -207,6 +232,17 @@ fun DemoScreen(vm: AppViewModel) {
                     }
                 },
                 actions = {
+                    // وضعیت اتصال بسیار ظریف — متصل / در حال دریافت
+                    Box(
+                        Modifier.padding(end = 4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CalmPulse(
+                            if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
+                            dotSize = 8.dp,
+                            enabled = !refreshing,
+                        )
+                    }
                     IconButton(onClick = { paletteOpen = true; SoundFx.soft() }) {
                         Icon(MrIcons.Search, contentDescription = "جستجوی هوشمند")
                     }
@@ -238,12 +274,12 @@ fun DemoScreen(vm: AppViewModel) {
             ) {
                 Spacer(Modifier.height(2.dp))
                 when (tab) {
-                    0 -> OverviewTab(vm)
+                    0 -> OverviewTab(vm, refreshing, refresh)
                     1 -> CustomersTab { customerOpen = it }
-                    2 -> ProductsTab()
+                    2 -> ProductsTab { productOpen = it }
                     3 -> ReportsTab()
                     4 -> AlertsTab(vm)
-                    else -> NotificationsTab(vm)
+                    else -> NotificationsTab(vm) { tab = 4 }
                 }
                 Text(
                     "★ داده‌های این بخش صرفاً برای نمایش قابلیت‌های M•REPORT است",
@@ -258,20 +294,18 @@ fun DemoScreen(vm: AppViewModel) {
     if (paletteOpen) {
         CommandPalette(
             onDismiss = { paletteOpen = false },
-            onSelect = { cmd ->
-                paletteOpen = false
-                when (cmd.action) {
-                    "customer" -> customerOpen = customersDemo.firstOrNull { it.name == cmd.target }
-                    "alerts" -> tab = 4
-                    "reports" -> tab = 3
-                    "overview" -> tab = 0
-                }
-            },
+            onOpenCustomer = { paletteOpen = false; customerOpen = it },
+            onOpenProduct = { paletteOpen = false; tab = 2; productOpen = it },
+            onGoTab = { paletteOpen = false; tab = it },
         )
     }
 
     customerOpen?.let { c ->
         Customer360(c, onDismiss = { customerOpen = null })
+    }
+
+    productOpen?.let { p ->
+        Product360(p, onDismiss = { productOpen = null })
     }
 }
 
@@ -306,9 +340,27 @@ private fun MTab(label: String, selected: Boolean, onClick: () -> Unit) {
 
 // ============================================================ تب نمای کلی
 @Composable
-private fun OverviewTab(vm: AppViewModel) {
+private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boolean) -> Unit) {
     val motion = vm.experience.motion
     val extras = LocalThemeExtras.current
+    val scheme = MaterialTheme.colorScheme
+    val savedOrder by vm.heroOrder.collectAsState()
+    val order = savedOrder?.split(",")
+        ?.mapNotNull { it.trim().toIntOrNull() }
+        ?.filter { it in heroes.indices }
+        ?.takeIf { it.size == heroes.size }
+        ?: heroes.indices.toList()
+    var editLayout by remember { mutableStateOf(false) }
+    var intervalSec by remember { mutableStateOf(0) }
+    // به‌روزرسانی خودکار — بدون تغییر هیچ داده‌ای در آتیران
+    LaunchedEffect(intervalSec) {
+        if (intervalSec > 0) {
+            while (true) {
+                delay(intervalSec.toLong() * 1000L)
+                onRefresh(true)
+            }
+        }
+    }
     val g1 = stagger(0, motion)
     val g2 = stagger(200, motion)
     val g3 = stagger(400, motion)
@@ -344,12 +396,109 @@ private fun OverviewTab(vm: AppViewModel) {
         }
     }
 
-    // ---------- چهار کارت اصلی ----------
-    heroes.chunked(2).forEach { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            row.forEach { h ->
-                HeroCard(h, motion, Modifier.weight(1f))
+    // ---------- وضعیت اتصال و همگام‌سازی ----------
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CalmPulse(
+                    if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
+                    dotSize = 9.dp,
+                    enabled = !refreshing,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (refreshing) "در حال دریافت اطلاعات..." else "متصل به سرویس آتیران",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.weight(1f))
+                Box(
+                    Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(extras.glassStrong)
+                        .border(1.dp, extras.hairline, CircleShape)
+                        .clickable { onRefresh(false) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "دریافت مجدد", tint = scheme.primary, modifier = Modifier.size(16.dp))
+                }
             }
+            Text(
+                "آخرین دریافت اطلاعات: " + fmtTime(vm.lastSyncMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("به‌روزرسانی خودکار:", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                listOf("دستی" to 0, "۳۰ ثانیه" to 30, "۱ دقیقه" to 60, "۵ دقیقه" to 300).forEach { (label, sec) ->
+                    MTab(label, intervalSec == sec) { intervalSec = sec; SoundFx.soft() }
+                }
+            }
+        }
+    }
+
+    // ---------- M•R Intelligence: لایه هوشمند روی داده‌ها ----------
+    Section("M•R Intelligence") {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            InsightRow(MrIcons.Alerts, Color(0xFFFFA94D), "۷ مشتری بیش از ۳۰ روز بدهی دارند", "مجموع مطالبات این گروه: ۲۴۸٬۰۰۰٬۰۰۰ تومان")
+            InsightRow(MrIcons.Customers, scheme.error, "بیشترین بدهکار: هایپر طلایی", "۴۸٬۲۰۰٬۰۰۰ تومان — نزدیک‌ترین سررسید: ۱۸ شهریور")
+            InsightRow(MrIcons.Trend, extras.positive, "روند مطالبات نسبت به دوره قبل", "کاهش ۱۲٪ — بهبود وضعیت وصول مطالبات")
+            Text(
+                "تحلیل خودکار روی داده‌های موجود — بدون تغییر هیچ اطلاعاتی",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    // ---------- چهار کارت اصلی — قابل شخصی‌سازی ----------
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (editLayout) {
+            Text("چیدمان دلخواه را با فلش‌ها مرتب کنید", style = MaterialTheme.typography.labelSmall, color = scheme.primary)
+            Spacer(Modifier.width(8.dp))
+        }
+        Box(
+            Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(if (editLayout) scheme.primary.copy(alpha = 0.18f) else extras.glassStrong)
+                .border(1.dp, if (editLayout) scheme.primary else extras.hairline, CircleShape)
+                .clickable { editLayout = !editLayout; SoundFx.soft() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(MrIcons.Settings, contentDescription = "شخصی‌سازی داشبورد", tint = if (editLayout) scheme.primary else scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        }
+    }
+    val ordered = order.map { heroes[it] }
+    ordered.chunked(2).forEachIndexed { r, row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEachIndexed { ci, h ->
+                val pos = r * 2 + ci
+                HeroCard(
+                    h, motion, Modifier.weight(1f),
+                    showHandles = editLayout,
+                    onUp = {
+                        if (pos > 0) {
+                            val n = order.toMutableList(); n.add(pos - 1, n.removeAt(pos)); vm.setHeroOrder(n)
+                        }
+                    },
+                    onDown = {
+                        if (pos < order.size - 1) {
+                            val n = order.toMutableList(); n.add(pos + 1, n.removeAt(pos)); vm.setHeroOrder(n)
+                        }
+                    },
+                )
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
 
@@ -449,12 +598,49 @@ private fun PulseItem(label: String, color: Color) {
     }
 }
 
+// ============================================================ ردیف هوشمندی
+@Composable
+private fun InsightRow(icon: ImageVector, tint: Color, title: String, sub: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+            .border(1.dp, LocalThemeExtras.current.hairline, RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(tint.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** قالب زمان «آخرین دریافت اطلاعات» */
+private fun fmtTime(ms: Long): String =
+    java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(ms))
+
 // ============================================================ کارت اصلی
 @Composable
-private fun HeroCard(h: Hero, motion: Boolean, modifier: Modifier = Modifier) {
+private fun HeroCard(
+    h: Hero, motion: Boolean, modifier: Modifier = Modifier,
+    showHandles: Boolean = false, onUp: () -> Unit = {}, onDown: () -> Unit = {},
+) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    GlassCard(modifier = modifier) {
+    Box(modifier) {
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -473,6 +659,31 @@ private fun HeroCard(h: Hero, motion: Boolean, modifier: Modifier = Modifier) {
             Text(h.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             MicroArea(h.spark.map { it.toFloat() }, scheme.primary)
         }
+        }
+        if (showHandles) {
+            Row(
+                Modifier.align(Alignment.TopEnd),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                HandleButton(Icons.Filled.KeyboardArrowUp, onUp)
+                HandleButton(Icons.Filled.KeyboardArrowDown, onDown)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HandleButton(icon: ImageVector, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            .border(1.dp, LocalThemeExtras.current.hairline, CircleShape)
+            .clickable { onClick(); SoundFx.soft() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -828,13 +1039,52 @@ private fun CustomersTab(onOpen: (CustomerD) -> Unit) {
 
 // ============================================================ تب کالاها
 @Composable
-private fun ProductsTab() {
+private fun ProductsTab(onOpen: (P3) -> Unit) {
     val g1 = stagger(0, true)
+    val extras = LocalThemeExtras.current
     Section("سهم فروش دسته‌ها") {
         DonutSimple(productShare, g1)
     }
     Section("پرفروش‌های ماه") {
         Columns3D(topProducts3D, stagger(200, true))
+    }
+    // کارت کالا — کلیک → Product 360
+    Section("کارت کالا") {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            topProducts3D.take(4).forEach { p ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(extras.glass)
+                        .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+                        .clickable { onOpen(p); SoundFx.soft() }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(MrIcons.Products, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        Text("گروه: خشکبار — سهم فروش " + p.v.toInt() + "٪", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -919,25 +1169,61 @@ private fun ReportsTab() {
                     }
                 }
             }
-            // پیش‌نمایش
-            GlassCard(corner = 14.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row {
-                        Text("مشتری", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, modifier = Modifier.weight(2f))
-                        Text("مانده", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            // پیش‌نمایش — هویت گزارش Enterprise
+            GlassCard(corner = 16.dp) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "M•R",
+                            style = TextStyle(brush = Brush.horizontalGradient(extras.brand), fontSize = 18.sp, fontWeight = FontWeight.Black),
+                        )
+                        Text(
+                            "MEELANO REPORTS",
+                            style = MaterialTheme.typography.labelSmall,
+                            letterSpacing = 2.sp,
+                            color = scheme.onSurfaceVariant,
+                        )
                     }
-                    repeat(4) { i ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(customersDemo[i].name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(2f))
-                            Text(
-                                customersDemo[i].balance,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (customersDemo[i].balance.startsWith("+")) extras.positive else scheme.error,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.End,
-                            )
+                    LightLine(width = 260.dp)
+                    Text("گزارش وضعیت مطالبات مشتریان", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("دوره: ۱ تا ۳۱ مرداد ۱۴۰۴", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("Executive Summary", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary, modifier = Modifier.align(Alignment.Start))
+                        SummaryRow("تعداد مشتریان", "۱٬۲۴۸")
+                        SummaryRow("مطالبات کل", "۲۴۸٬۰۰۰٬۰۰۰ تومان")
+                        SummaryRow("مشتریان پرریسک", "۷")
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(extras.hairline))
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row {
+                            Text("مشتری", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, modifier = Modifier.weight(2f))
+                            Text("مانده", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                         }
+                        repeat(4) { i ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(customersDemo[i].name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(2f))
+                                Text(
+                                    customersDemo[i].balance,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (customersDemo[i].balance.startsWith("+")) extras.positive else scheme.error,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.End,
+                                )
+                            }
+                        }
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(extras.hairline))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("M•R — Meelano Reports", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        Text("Meelano Studio Design · Milad Yaghoobi", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                     }
                 }
             }
@@ -966,6 +1252,15 @@ private fun ReportsTab() {
                 )
             }
         }
+    }
+}
+
+/** ردیف «برچسب …… مقدار» در Executive Summary */
+@Composable
+private fun SummaryRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1014,7 +1309,7 @@ private fun AlertsTab(vm: AppViewModel) {
 
 // ============================================================ تب اعلان‌ها (Inbox)
 @Composable
-private fun NotificationsTab(vm: AppViewModel) {
+private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     var filter by remember { mutableStateOf("همه") }
@@ -1068,7 +1363,7 @@ private fun NotificationsTab(vm: AppViewModel) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
                             .background(scheme.primary.copy(alpha = 0.10f))
-                            .clickable { SoundFx.soft() }
+                            .clickable { SoundFx.soft(); onOpenAlerts() }
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     )
                 }
@@ -1077,26 +1372,54 @@ private fun NotificationsTab(vm: AppViewModel) {
     }
 }
 
-// ============================================================ پالت فرمان
-private data class Command(val title: String, val hint: String, val action: String, val target: String = "")
+// ============================================================ پالت فرمان (Universal Search)
+private data class SearchItem(
+    val title: String, val hint: String, val group: String,
+    val icon: ImageVector, val action: () -> Unit,
+)
 
+/**
+ * Command Center — جستجوی همزمان در صفحه‌ها، مشتریان، کالاها،
+ * هشدارها و گزارش‌ها؛ انتخاب مستقیم به مقصد می‌رود.
+ */
 @Composable
-private fun CommandPalette(onDismiss: () -> Unit, onSelect: (Command) -> Unit) {
+private fun CommandPalette(
+    onDismiss: () -> Unit,
+    onOpenCustomer: (CustomerD) -> Unit,
+    onOpenProduct: (P3) -> Unit,
+    onGoTab: (Int) -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     var q by remember { mutableStateOf("") }
-    val commands = remember {
-        listOf(
-            Command("هایپر طلایی", "Customer — ورود به پرونده", "customer", "هایپر طلایی"),
-            Command("فروشگاه زرین", "Customer — ورود به پرونده", "customer", "فروشگاه زرین"),
-            Command("چک‌های سررسید", "گزارش — مرکز توجه", "alerts"),
-            Command("گزارش ماهانه مشتریان", "Report Studio", "reports"),
-            Command("نمای کلی", "Overview — داشبورد اصلی", "overview"),
-        )
+
+    val items = listOf(
+        // صفحه‌ها
+        SearchItem("نمای کلی", "داشبورد اصلی", "صفحه‌ها", MrIcons.Overview) { onGoTab(0) },
+        SearchItem("مشتریان", "فهرست و پرونده دیجیتال", "صفحه‌ها", MrIcons.Customers) { onGoTab(1) },
+        SearchItem("کالاها", "موجودی و کارت کالا", "صفحه‌ها", MrIcons.Products) { onGoTab(2) },
+        SearchItem("گزارش‌ها", "Report Studio", "صفحه‌ها", MrIcons.Reports) { onGoTab(3) },
+        SearchItem("هشدارها", "مرکز توجه", "صفحه‌ها", MrIcons.Alerts) { onGoTab(4) },
+        SearchItem("اعلان‌ها", "صندوق ورودی", "صفحه‌ها", MrIcons.Notifications) { onGoTab(5) },
+        // مشتریان
+        *customersDemo.map {
+            SearchItem(it.name, "پرونده ۳۶۰ مشتری — مانده " + it.balance, "مشتریان", MrIcons.Customers) { onOpenCustomer(it) }
+        }.toTypedArray(),
+        // کالاها
+        *topProducts3D.map {
+            SearchItem(it.name, "کارت کالا — سهم فروش " + it.v.toInt() + "٪", "کالاها", MrIcons.Products) { onOpenProduct(it) }
+        }.toTypedArray(),
+        // هشدارها و گزارش‌ها
+        SearchItem("چک‌های سررسید شده", "مرکز توجه — چک‌های سررسیدشده", "هشدارها و گزارش‌ها", MrIcons.Alerts) { onGoTab(4) },
+        SearchItem("مطالبات مشتریان", "گزارش وضعیت مطالبات", "هشدارها و گزارش‌ها", MrIcons.Reports) { onGoTab(3) },
+        SearchItem("گزارش موجودی انبار", "Report Studio", "هشدارها و گزارش‌ها", MrIcons.Reports) { onGoTab(3) },
+        SearchItem("گردش حساب", "گزارش گردش مالی", "هشدارها و گزارش‌ها", MrIcons.Trend) { onGoTab(3) },
+    )
+    val filtered = items.filter {
+        q.isBlank() || it.title.contains(q, true) || it.hint.contains(q, true) || it.group.contains(q, true)
     }
-    val filtered = commands.filter {
-        q.isBlank() || it.title.contains(q, true) || it.hint.contains(q, true)
-    }
+    val groups = listOf("صفحه‌ها", "مشتریان", "کالاها", "هشدارها و گزارش‌ها")
+
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
             Modifier
@@ -1117,42 +1440,133 @@ private fun CommandPalette(onDismiss: () -> Unit, onSelect: (Command) -> Unit) {
                 OutlinedTextField(
                     value = q,
                     onValueChange = { q = it },
-                    placeholder = { Text("جستجو کنید... (نام مشتری، چک‌های سررسید، گزارش)") },
+                    placeholder = { Text("چه کاری می‌خواهید انجام دهید؟ (نام مشتری، کالا، چک‌های سررسید...)") },
                     singleLine = true,
                     leadingIcon = { Icon(MrIcons.Search, contentDescription = null) },
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                 )
-                Column(Modifier.padding(bottom = 10.dp)) {
-                    filtered.forEach { c ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelect(c); SoundFx.soft() }
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(c.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                Text(c.hint, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-                            }
-                            Icon(
-                                Icons.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint = extras.accent,
-                                modifier = Modifier.size(15.dp),
+                Column(
+                    Modifier
+                        .padding(bottom = 10.dp)
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(max = 340.dp),
+                ) {
+                    groups.forEach { g ->
+                        val gItems = filtered.filter { it.group == g }
+                        if (gItems.isNotEmpty()) {
+                            Text(
+                                g,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                             )
+                            gItems.forEach { c ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { c.action(); SoundFx.soft() }
+                                        .padding(horizontal = 16.dp, vertical = 9.dp),
+                                ) {
+                                    Icon(
+                                        c.icon,
+                                        contentDescription = null,
+                                        tint = scheme.primary,
+                                        modifier = Modifier.size(17.dp),
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(c.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                        Text(c.hint, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
                         }
                     }
                     if (filtered.isEmpty()) {
-                        Text(
-                            "نتیجه‌ای یافت نشد",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = scheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        )
+                        Column(
+                            Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("موردی یافت نشد", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text("عبارت دیگری را جستجو کنید", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+// ============================================================ پرونده کالا ۳۶۰
+@Composable
+private fun Product360(p: P3, onDismiss: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    val idx = topProducts3D.indexOf(p).coerceAtLeast(0)
+    val price: Long = 850_000L + idx * 120_000L
+    val totalStock = (p.v * 12).toInt()
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(p.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    Text("کد کالا: ۱۰۲۳" + (idx + 4) + " — گروه: خشکبار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(extras.positive.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(extras.positive))
+                    Spacer(Modifier.width(5.dp))
+                    Text("فعال", style = MaterialTheme.typography.labelSmall, color = extras.positive)
+                }
+            }
+            NumberHero(formatInt(totalStock.toLong()), unit = "موجودی کل (کیلوگرم)", color = scheme.primary, fontSize = 30.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("موجودی هر انبار", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
+                listOf(
+                    "انبار مرکزی" to (totalStock * 0.5f).toInt(),
+                    "انبار شعبه" to (totalStock * 0.3f).toInt(),
+                    "فروشگاه حضوری" to (totalStock * 0.2f).toInt(),
+                ).forEach { (name, qty) ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        Text(formatInt(qty.toLong()), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("اطلاعات مرتبط", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
+                listOf(
+                    "قیمت فروش" to (formatInt(price) + " تومان"),
+                    "آخرین فروش" to "۲ شهریور ۱۴۰۴",
+                    "میانگین فروش ماهانه" to (formatInt((totalStock / 3).toLong()) + " کیلوگرم"),
+                ).forEach { (k, v) ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(k, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                        Text(v, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                GlassAction(Icons.Filled.PictureAsPdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
+                GlassAction(Icons.Filled.TableChart, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
+                GlassAction(Icons.Filled.Share, "Share", extras.accent) { SoundFx.soft() }
             }
         }
     }
@@ -1164,12 +1578,27 @@ private fun CommandPalette(onDismiss: () -> Unit, onSelect: (Command) -> Unit) {
 private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        AmbientBackground(enabled = false) {
+    // Master → Detail Drawer: پنل کناری با انیمیشن ۲۸۰ms — نه پنجره تمام‌صفحه
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    Box(Modifier.fillMaxSize()) {
+        // پرده تیره پشت پنل
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable(onClick = onDismiss),
+        )
+        AnimatedVisibility(
+            visible = shown,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(280)),
+            modifier = Modifier.align(Alignment.CenterVertically),
+        ) {
             Column(
                 Modifier
-                    .fillMaxSize()
-                    .background(scheme.background.copy(alpha = 0.97f)),
+                    .fillMaxWidth(0.94f)
+                    .fillMaxHeight()
+                    .background(scheme.background),
             ) {
                 TopAppBar(
                     title = { Text("پرونده دیجیتال مشتری", fontWeight = FontWeight.Bold) },

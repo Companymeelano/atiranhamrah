@@ -33,6 +33,7 @@ class SettingsStore(private val context: Context) {
         val motion = booleanPreferencesKey("motion")
         val ambient = booleanPreferencesKey("ambient")
         val wowSweepDone = booleanPreferencesKey("wowSweepDone")
+        val heroOrder = stringPreferencesKey("heroOrder")
     }
 
     /** تم انتخابی کاربر (۰ تا ۳) */
@@ -67,6 +68,13 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setWowSweepDone() {
         context.dataStore.edit { it[Keys.wowSweepDone] = true }
+    }
+
+    /** ترتیب کارت‌های داشبورد (شخصی‌سازی — مثل "2,0,3,1") */
+    val heroOrder: Flow<String?> = context.dataStore.data.map { p -> p[Keys.heroOrder] }
+
+    suspend fun setHeroOrder(order: String) {
+        context.dataStore.edit { it[Keys.heroOrder] = order }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->
