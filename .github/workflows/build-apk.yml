@@ -5,6 +5,9 @@ on:
     branches: [arena/01a07aea-atiranhamrah, main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,8 +21,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK (licenses pre-accepted)
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Ensure platform 35 & licenses (yes-piped, cannot hang)
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          yes | sdkmanager "platforms;android-35" > /dev/null 2>&1 || true
+          INSTALLED=$(sdkmanager --list_installed 2>/dev/null | grep -c "platforms;android-35" || true)
+          echo "::warning::platforms-android-35-installed=$INSTALLED"
 
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -27,13 +37,42 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
-        run: gradle assembleDebug --no-daemon --stacktrace
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon 2>&1 | tee gradle-build.log
+          echo "exitstatus=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Surface build errors as annotations
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "===== Kotlin/compile errors ====="
+          grep -E "^e: |error: |FAILURE:|What went wrong|Caused by:" -A 2 gradle-build.log | head -80 || true
+          echo "===== as annotations ====="
+          grep -E "^e: |error: " gradle-build.log | head -25 | while IFS= read -r line; do
+            echo "::error::${line:0:600}"
+          done
+          exit 1
 
       - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: AtiranHamrahViewer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Create release with APK
+        if: steps.build.outcome == 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.1.0-debug
+          name: "آتیران همراه v1.1.0 — APK قابل نصب"
+          body: |
+            نسخه ۱.۱.۰ نمایشگر دیتابیس آتیران همراه (debug، امضاشده با کلید debug).
+
+            **نصب:** فایل `app-debug.apk` را دانلود و روی گوشی اندروید ۷ به بالا نصب کنید
+            (فعال‌کردن «نصب از منابع ناشناس» لازم است).
+          files: app/build/outputs/apk/debug/app-debug.apk
+          prerelease: true
