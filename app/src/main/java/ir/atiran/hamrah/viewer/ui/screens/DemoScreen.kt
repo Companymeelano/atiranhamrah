@@ -401,13 +401,11 @@ private fun MReportTitle(vm: AppViewModel) {
         val s2 = (c + band / 2f).coerceIn(0f, 1f)
         val hi = lerp(extras.brand[1], Color.White, 0.85f)
         Brush.horizontalGradient(
-            listOf(
-                0f to extras.brand.first(),
-                s0 to extras.brand[1],
-                s1 to hi,
-                s2 to extras.brand[1],
-                1f to extras.brand.last(),
-            )
+            0f to extras.brand.first(),
+            s0 to extras.brand[1],
+            s1 to hi,
+            s2 to extras.brand[1],
+            1f to extras.brand.last(),
         )
     } else {
         Brush.horizontalGradient(extras.brand)
