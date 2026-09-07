@@ -75,6 +75,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen(vm: AppViewModel) {
     val saved by vm.settings.collectAsState()
     val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
 
     var host by remember { mutableStateOf(saved.host) }
     var port by remember { mutableStateOf(saved.port) }
@@ -90,7 +91,7 @@ fun LoginScreen(vm: AppViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(scheme.primary, scheme.tertiary)))
+            .background(Brush.verticalGradient(extras.loginGradient))
     ) {
         Column(
             modifier = Modifier
@@ -106,7 +107,7 @@ fun LoginScreen(vm: AppViewModel) {
                 modifier = Modifier
                     .size(110.dp)
                     .clip(CircleShape)
-                    .border(3.dp, scheme.onPrimary.copy(alpha = 0.35f), CircleShape),
+                    .border(3.dp, scheme.primary.copy(alpha = 0.55f), CircleShape),
             ) {
                 Image(
                     painter = painterResource(R.drawable.app_logo),
@@ -277,9 +278,7 @@ fun LoginScreen(vm: AppViewModel) {
                     OutlinedButton(
                         onClick = { vm.openDemo() },
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = scheme.primary,
-                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.primary),
                         modifier = Modifier.fillMaxWidth().height(46.dp),
                     ) {
                         Icon(Icons.Filled.PlayCircle, contentDescription = null)
@@ -326,16 +325,13 @@ private fun ThemePicker(vm: AppViewModel) {
         ) {
             AppThemeId.entries.forEach { t ->
                 val selected = vm.themeId == t.ordinal
+                val swatch = themeSwatch(t)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(themeSwatchTop(t), themeSwatchBottom(t))
-                                )
-                            )
+                            .background(Brush.linearGradient(swatch))
                             .border(
                                 width = if (selected) 3.dp else 1.dp,
                                 color = if (selected) scheme.primary else scheme.outlineVariant,
@@ -367,18 +363,11 @@ private fun ThemePicker(vm: AppViewModel) {
 }
 
 /** رنگ نمایشی هر تم برای دایره انتخاب */
-private fun themeSwatchTop(t: AppThemeId): Color = when (t) {
-    AppThemeId.GalaxyNight -> Color(0xFF9DA7FF)
-    AppThemeId.RoyalEmerald -> Color(0xFF47E0A9)
-    AppThemeId.BlossomMorning -> Color(0xFFC25A2C)
-    AppThemeId.IceSapphire -> Color(0xFF1668C4)
-}
-
-private fun themeSwatchBottom(t: AppThemeId): Color = when (t) {
-    AppThemeId.GalaxyNight -> Color(0xFF141A66)
-    AppThemeId.RoyalEmerald -> Color(0xFF06120D)
-    AppThemeId.BlossomMorning -> Color(0xFFFFEDC2)
-    AppThemeId.IceSapphire -> Color(0xFFC9F0E6)
+private fun themeSwatch(t: AppThemeId): List<Color> = when (t) {
+    AppThemeId.OnyxGold -> listOf(Color(0xFFE3C579), Color(0xFF08080C))
+    AppThemeId.VelvetRuby -> listOf(Color(0xFFF3C4CF), Color(0xFF140709))
+    AppThemeId.PearlGold -> listOf(Color(0xFF8A6414), Color(0xFFFAF6EC))
+    AppThemeId.PlatinumPistachio -> listOf(Color(0xFF1F7A5C), Color(0xFFF2F6F1))
 }
 
 // ------------------------------------------------------------ برندینگ

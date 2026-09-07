@@ -43,10 +43,11 @@ fun AtiranApp(vm: AppViewModel) {
 @Composable
 private fun BootScreen() {
     val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val extras = ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras.current
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(scheme.primary, scheme.tertiary))),
+            .background(Brush.verticalGradient(extras.loginGradient)),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

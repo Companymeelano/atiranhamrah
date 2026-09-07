@@ -88,7 +88,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: AtiranHamrahViewer-v2.1.1-debug-apk
+          name: AtiranHamrahViewer-v2.2.0-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -96,8 +96,8 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.1.1-debug
-          name: "آتیران همراه v2.1.1 — آیکن سه‌بعدی، ۴ تم، فونت وزیرمتن و دموی مدیریتی"
+          tag_name: v2.2.0-debug
+          name: "آتیران همراه v2.2.0 — آیکن لاکچری گزارش و آجیل، تم‌های جدید و دموی فوق‌پیشرفته — آیکن سه‌بعدی، ۴ تم، فونت وزیرمتن و دموی مدیریتی"
           body: |
             نسخه ۲.۱.۰ — نمایشگر مدیریت دیتابیس آجیل و خشکبار
 

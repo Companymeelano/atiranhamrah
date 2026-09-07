@@ -14,7 +14,6 @@ import androidx.compose.ui.text.font.FontWeight
 import ir.atiran.hamrah.viewer.R
 
 // ---------------------------------------------------------------- فونت
-/** وزیرمتن — فونت فارسی زیبا و خوانا برای کل برنامه */
 val Vazirmatn = FontFamily(
     Font(R.font.vazirmatn_regular, FontWeight.W400),
     Font(R.font.vazirmatn_medium, FontWeight.W500),
@@ -44,137 +43,141 @@ val AppTypography = Typography(
 )
 
 // ---------------------------------------------------------------- تم‌ها
-/** چهار تم برنامه — دو تیره لاکچری + دو روشن */
 enum class AppThemeId(val faName: String, val shortName: String, val isDark: Boolean) {
-    GalaxyNight("شب کهکشانی", "کهکشان", true),
-    RoyalEmerald("زمرد سلطنتی", "زمرد", true),
-    BlossomMorning("صبح شکوفه", "شکوفه", false),
-    IceSapphire("یاقوت آبی", "یاقوت", false),
+    OnyxGold("شب ابریسم و طلا", "شب", true),
+    VelvetRuby("مخمل یاقوت", "یاقوت", true),
+    PearlGold("صدف طلایی", "صدف", false),
+    PlatinumPistachio("پسته پلاتینی", "پسته", false),
 }
 
-/** رنگ‌های تکمیلی هر تم (چارت‌ها، طلایی برندینگ، ...) */
 data class ThemeExtras(
     val chart: List<Color>,
     val gold: Color,
     val positive: Color,
     val goldGradient: List<Color>,
+    /** گرادیان پس‌زمینه صفحه ورود/بوت */
+    val loginGradient: List<Color>,
+    /** رنگ‌های نمایشی انتخابگر تم */
+    val swatch: List<Color>,
 )
 
 val LocalThemeExtras = staticCompositionLocalOf {
     ThemeExtras(
-        chart = listOf(Color(0xFF9DA7FF), Color(0xFFFFD479), Color(0xFF6FE3B8), Color(0xFFFF8FA3), Color(0xFF7CD5FF)),
-        gold = Color(0xFFFFD479),
-        positive = Color(0xFF6FE3B8),
-        goldGradient = listOf(Color(0xFFF7E7A5), Color(0xFFFFD479), Color(0xFFE8B84B)),
+        chart = listOf(Color(0xFFE3C579), Color(0xFF2FD9A5), Color(0xFFFFB86B), Color(0xFF9DA7FF), Color(0xFFFF8FA3)),
+        gold = Color(0xFFE3C579),
+        positive = Color(0xFF2FD9A5),
+        goldGradient = listOf(Color(0xFFF9EDC8), Color(0xFFE3C579), Color(0xFFB08A3A)),
+        loginGradient = listOf(Color(0xFF3A2E10), Color(0xFF08080C)),
+        swatch = listOf(Color(0xFFE3C579), Color(0xFF08080C)),
     )
 }
 
-// ------------------------------------------------ تم ۱: شب کهکشانی (تیره)
-private val GalaxyNightScheme = darkColorScheme(
-    primary = Color(0xFF9DA7FF),
-    onPrimary = Color(0xFF141A66),
-    primaryContainer = Color(0xFF333C8F),
-    onPrimaryContainer = Color(0xFFE4E8FF),
-    secondary = Color(0xFFFFD479),
-    onSecondary = Color(0xFF4A3600),
-    secondaryContainer = Color(0xFF5C470F),
-    onSecondaryContainer = Color(0xFFFFE9B8),
-    tertiary = Color(0xFFC98BFF),
-    onTertiary = Color(0xFF3D1A66),
-    tertiaryContainer = Color(0xFF5A3599),
-    onTertiaryContainer = Color(0xFFF0DCFF),
-    background = Color(0xFF0B1026),
-    onBackground = Color(0xFFE3E6F5),
-    surface = Color(0xFF121838),
-    onSurface = Color(0xFFE3E6F5),
-    surfaceVariant = Color(0xFF232B54),
-    onSurfaceVariant = Color(0xFFB9C0DE),
-    outline = Color(0xFF5A6390),
-    outlineVariant = Color(0xFF333C6B),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
-)
-
-// ------------------------------------------------ تم ۲: زمرد سلطنتی (تیره)
-private val RoyalEmeraldScheme = darkColorScheme(
-    primary = Color(0xFF47E0A9),
-    onPrimary = Color(0xFF003828),
-    primaryContainer = Color(0xFF0B5C43),
-    onPrimaryContainer = Color(0xFFB8F5DD),
-    secondary = Color(0xFFF2C14E),
-    onSecondary = Color(0xFF3F2E00),
-    secondaryContainer = Color(0xFF5B470F),
-    onSecondaryContainer = Color(0xFFFFE9B0),
+// ---------------------------------------- تم ۱: شب ابریشم و طلا (تیره لاکچری)
+private val OnyxGoldScheme = darkColorScheme(
+    primary = Color(0xFFE3C579),
+    onPrimary = Color(0xFF221A05),
+    primaryContainer = Color(0xFF3A2E10),
+    onPrimaryContainer = Color(0xFFF7EAC4),
+    secondary = Color(0xFF2FD9A5),
+    onSecondary = Color(0xFF00382A),
+    secondaryContainer = Color(0xFF0B4A37),
+    onSecondaryContainer = Color(0xFFB8F5DD),
     tertiary = Color(0xFFFFB86B),
     onTertiary = Color(0xFF4A2800),
-    tertiaryContainer = Color(0xFF6B3F0E),
+    tertiaryContainer = Color(0xFF5C3A12),
     onTertiaryContainer = Color(0xFFFFDCC2),
-    background = Color(0xFF06120D),
-    onBackground = Color(0xFFDFF2E9),
-    surface = Color(0xFF0D1F17),
-    onSurface = Color(0xFFDFF2E9),
-    surfaceVariant = Color(0xFF1C3328),
-    onSurfaceVariant = Color(0xFFB5CCBF),
-    outline = Color(0xFF5F7A6E),
-    outlineVariant = Color(0xFF2E463A),
+    background = Color(0xFF08080C),
+    onBackground = Color(0xFFEDE6D4),
+    surface = Color(0xFF101017),
+    onSurface = Color(0xFFEDE6D4),
+    surfaceVariant = Color(0xFF1C1C26),
+    onSurfaceVariant = Color(0xFFB7B1A0),
+    outline = Color(0xFF6B6654),
+    outlineVariant = Color(0xFF2A2A36),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
 )
 
-// ------------------------------------------------ تم ۳: صبح شکوفه (روشن)
-private val BlossomMorningScheme = lightColorScheme(
-    primary = Color(0xFFC25A2C),
+// ---------------------------------------- تم ۲: مخمل یاقوت (تیره لاکچری)
+private val VelvetRubyScheme = darkColorScheme(
+    primary = Color(0xFFF3C4CF),
+    onPrimary = Color(0xFF3E0A1C),
+    primaryContainer = Color(0xFF5D2238),
+    onPrimaryContainer = Color(0xFFFFDDE6),
+    secondary = Color(0xFFE3C579),
+    onSecondary = Color(0xFF221A05),
+    secondaryContainer = Color(0xFF3F3110),
+    onSecondaryContainer = Color(0xFFF7EAC4),
+    tertiary = Color(0xFFFFB86B),
+    onTertiary = Color(0xFF4A2800),
+    tertiaryContainer = Color(0xFF5C3A12),
+    onTertiaryContainer = Color(0xFFFFDCC2),
+    background = Color(0xFF140709),
+    onBackground = Color(0xFFF6E9EC),
+    surface = Color(0xFF1D0D12),
+    onSurface = Color(0xFFF6E9EC),
+    surfaceVariant = Color(0xFF2B161D),
+    onSurfaceVariant = Color(0xFFD4B9C0),
+    outline = Color(0xFF8A6670),
+    outlineVariant = Color(0xFF3A1F28),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+)
+
+// ---------------------------------------- تم ۳: صدف طلایی (روشن لاکچری)
+private val PearlGoldScheme = lightColorScheme(
+    primary = Color(0xFF8A6414),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFFFE4D4),
-    onPrimaryContainer = Color(0xFF5B260E),
-    secondary = Color(0xFF6D8B3F),
+    primaryContainer = Color(0xFFF6E9C5),
+    onPrimaryContainer = Color(0xFF3D2B05),
+    secondary = Color(0xFF2F6B5E),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE6EFCB),
-    onSecondaryContainer = Color(0xFF2B3A10),
-    tertiary = Color(0xFFB07E1D),
+    secondaryContainer = Color(0xFFCFF0E1),
+    onSecondaryContainer = Color(0xFF06382A),
+    tertiary = Color(0xFFB4552E),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFFFEDC2),
-    onTertiaryContainer = Color(0xFF5C4300),
-    background = Color(0xFFFBF7EF),
-    onBackground = Color(0xFF45403A),
+    tertiaryContainer = Color(0xFFFFDCC2),
+    onTertiaryContainer = Color(0xFF5C2408),
+    background = Color(0xFFFAF6EC),
+    onBackground = Color(0xFF423A2C),
     surface = Color(0xFFFFFCF5),
-    onSurface = Color(0xFF45403A),
-    surfaceVariant = Color(0xFFEDE5D5),
-    onSurfaceVariant = Color(0xFF756F60),
-    outline = Color(0xFF9C9482),
-    outlineVariant = Color(0xFFE3DCCB),
+    onSurface = Color(0xFF423A2C),
+    surfaceVariant = Color(0xFFF0E9D8),
+    onSurfaceVariant = Color(0xFF6F6653),
+    outline = Color(0xFFA39980),
+    outlineVariant = Color(0xFFE6DEC9),
     error = Color(0xFFBA1A1A),
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
 )
 
-// ------------------------------------------------ تم ۴: یاقوت آبی (روشن)
-private val IceSapphireScheme = lightColorScheme(
-    primary = Color(0xFF1668C4),
+// ---------------------------------------- تم ۴: پسته پلاتینی (روشن لاکچری)
+private val PlatinumPistachioScheme = lightColorScheme(
+    primary = Color(0xFF1F7A5C),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFD6E4FF),
-    onPrimaryContainer = Color(0xFF0A2F66),
-    secondary = Color(0xFF00897B),
+    primaryContainer = Color(0xFFCFF0E1),
+    onPrimaryContainer = Color(0xFF06382A),
+    secondary = Color(0xFF9C6B1F),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFC9F0E6),
-    onSecondaryContainer = Color(0xFF003731),
-    tertiary = Color(0xFFC77E00),
+    secondaryContainer = Color(0xFFF6E9C5),
+    onSecondaryContainer = Color(0xFF3D2B05),
+    tertiary = Color(0xFF3E6E9E),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFFFDDB8),
-    onTertiaryContainer = Color(0xFF5C4300),
-    background = Color(0xFFF3F7FC),
-    onBackground = Color(0xFF1A1C1F),
+    tertiaryContainer = Color(0xFFD6E4FF),
+    onTertiaryContainer = Color(0xFF0A2F66),
+    background = Color(0xFFF2F6F1),
+    onBackground = Color(0xFF22302A),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF1A1C1F),
-    surfaceVariant = Color(0xFFDFE6EF),
-    onSurfaceVariant = Color(0xFF42474E),
-    outline = Color(0xFF72777F),
-    outlineVariant = Color(0xFFC3C7CF),
+    onSurface = Color(0xFF22302A),
+    surfaceVariant = Color(0xFFE2ECE4),
+    onSurfaceVariant = Color(0xFF55655D),
+    outline = Color(0xFF8C9C92),
+    outlineVariant = Color(0xFFD3E0D6),
     error = Color(0xFFBA1A1A),
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
@@ -182,36 +185,44 @@ private val IceSapphireScheme = lightColorScheme(
 )
 
 private fun schemeFor(id: AppThemeId) = when (id) {
-    AppThemeId.GalaxyNight -> GalaxyNightScheme
-    AppThemeId.RoyalEmerald -> RoyalEmeraldScheme
-    AppThemeId.BlossomMorning -> BlossomMorningScheme
-    AppThemeId.IceSapphire -> IceSapphireScheme
+    AppThemeId.OnyxGold -> OnyxGoldScheme
+    AppThemeId.VelvetRuby -> VelvetRubyScheme
+    AppThemeId.PearlGold -> PearlGoldScheme
+    AppThemeId.PlatinumPistachio -> PlatinumPistachioScheme
 }
 
 private fun extrasFor(id: AppThemeId) = when (id) {
-    AppThemeId.GalaxyNight -> ThemeExtras(
-        chart = listOf(Color(0xFF9DA7FF), Color(0xFFFFD479), Color(0xFF6FE3B8), Color(0xFFFF8FA3), Color(0xFF7CD5FF)),
-        gold = Color(0xFFFFD479),
-        positive = Color(0xFF6FE3B8),
-        goldGradient = listOf(Color(0xFFF7E7A5), Color(0xFFFFD479), Color(0xFFE8B84B)),
+    AppThemeId.OnyxGold -> ThemeExtras(
+        chart = listOf(Color(0xFFE3C579), Color(0xFF2FD9A5), Color(0xFFFFB86B), Color(0xFF9DA7FF), Color(0xFFFF8FA3)),
+        gold = Color(0xFFE3C579),
+        positive = Color(0xFF2FD9A5),
+        goldGradient = listOf(Color(0xFFF9EDC8), Color(0xFFE3C579), Color(0xFFB08A3A)),
+        loginGradient = listOf(Color(0xFF3A2E10), Color(0xFF0A2A20), Color(0xFF08080C)),
+        swatch = listOf(Color(0xFFE3C579), Color(0xFF08080C)),
     )
-    AppThemeId.RoyalEmerald -> ThemeExtras(
-        chart = listOf(Color(0xFF47E0A9), Color(0xFFF2C14E), Color(0xFFFFB86B), Color(0xFF7FC8FF), Color(0xFFD9A7FF)),
-        gold = Color(0xFFF2C14E),
-        positive = Color(0xFF47E0A9),
-        goldGradient = listOf(Color(0xFFFFE9B0), Color(0xFFF2C14E), Color(0xFFD9A43A)),
+    AppThemeId.VelvetRuby -> ThemeExtras(
+        chart = listOf(Color(0xFFF3C4CF), Color(0xFFE3C579), Color(0xFFFFB86B), Color(0xFFC98BFF), Color(0xFF7FC8FF)),
+        gold = Color(0xFFE3C579),
+        positive = Color(0xFF2FD9A5),
+        goldGradient = listOf(Color(0xFFF9EDC8), Color(0xFFE3C579), Color(0xFFB08A3A)),
+        loginGradient = listOf(Color(0xFF5D2238), Color(0xFF2E0E18), Color(0xFF140709)),
+        swatch = listOf(Color(0xFFF3C4CF), Color(0xFF140709)),
     )
-    AppThemeId.BlossomMorning -> ThemeExtras(
-        chart = listOf(Color(0xFFC25A2C), Color(0xFF6D8B3F), Color(0xFFE0A82E), Color(0xFF4E8D7C), Color(0xFFA85C76)),
-        gold = Color(0xFFB07E1D),
-        positive = Color(0xFF3F8F4F),
-        goldGradient = listOf(Color(0xFFD9A62E), Color(0xFFB07E1D), Color(0xFF8A5E0E)),
+    AppThemeId.PearlGold -> ThemeExtras(
+        chart = listOf(Color(0xFF8A6414), Color(0xFF2F6B5E), Color(0xFFB4552E), Color(0xFF3E6E9E), Color(0xFF8E5BC8)),
+        gold = Color(0xFF8A6414),
+        positive = Color(0xFF2F6B5E),
+        goldGradient = listOf(Color(0xFFD9A62E), Color(0xFF8A6414), Color(0xFF6A4C0A)),
+        loginGradient = listOf(Color(0xFF8A6414), Color(0xFFB4552E), Color(0xFF6A4C0A)),
+        swatch = listOf(Color(0xFF8A6414), Color(0xFFFAF6EC)),
     )
-    AppThemeId.IceSapphire -> ThemeExtras(
-        chart = listOf(Color(0xFF1668C4), Color(0xFF00897B), Color(0xFFE08E00), Color(0xFF8E5BC8), Color(0xFFE05C7A)),
-        gold = Color(0xFFC77E00),
-        positive = Color(0xFF1E8E3E),
-        goldGradient = listOf(Color(0xFFE8A93E), Color(0xFFC77E00), Color(0xFF9A5F00)),
+    AppThemeId.PlatinumPistachio -> ThemeExtras(
+        chart = listOf(Color(0xFF1F7A5C), Color(0xFF9C6B1F), Color(0xFF3E6E9E), Color(0xFFB4552E), Color(0xFF8E5BC8)),
+        gold = Color(0xFF9C6B1F),
+        positive = Color(0xFF1F7A5C),
+        goldGradient = listOf(Color(0xFFD9A62E), Color(0xFF9C6B1F), Color(0xFF7A520F)),
+        loginGradient = listOf(Color(0xFF1F7A5C), Color(0xFF3E6E9E), Color(0xFF123A2C)),
+        swatch = listOf(Color(0xFF1F7A5C), Color(0xFFF2F6F1)),
     )
 }
 
