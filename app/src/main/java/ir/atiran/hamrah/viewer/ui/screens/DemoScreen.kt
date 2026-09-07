@@ -444,7 +444,7 @@ private fun Sparkline(values: List<Float>, color: Color, progress: Float) {
                 cubicTo(mid, pts[i - 1].y, mid, pts[i].y, pts[i].x, pts[i].y)
             }
         }
-        drawPath(path, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(path, color = color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         drawCircle(color, 3.dp.toPx(), pts.last())
     }
 }
@@ -500,10 +500,13 @@ private fun DonutChart(slices: List<Slice>, progress: Float) {
                 slices.forEachIndexed { i, s ->
                     val sweep = 360f * (s.value / total) * progress
                     drawArc(
-                        extras.chart[i % extras.chart.size],
-                        start, (sweep - 2.5f).coerceAtLeast(0.5f), false,
-                        topLeft, Size(r * 2, r * 2),
-                        Stroke(stroke, cap = StrokeCap.Butt),
+                        color = extras.chart[i % extras.chart.size],
+                        startAngle = start,
+                        sweepAngle = (sweep - 2.5f).coerceAtLeast(0.5f),
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = Size(r * 2, r * 2),
+                        style = Stroke(stroke, cap = StrokeCap.Butt),
                     )
                     start += 360f * (s.value / total)
                 }
@@ -554,7 +557,7 @@ private fun RadarChart(axes: List<String>, values: List<Float>, progress: Float)
                     }
                     close()
                 }
-                drawPath(grid, scheme.outlineVariant.copy(alpha = 0.4f), Stroke(1.5f))
+                drawPath(grid, color = scheme.outlineVariant.copy(alpha = 0.4f), style = Stroke(1.5f))
             }
             for (i in 0 until n) drawLine(scheme.outlineVariant.copy(alpha = 0.4f), c, pt(i, 1f), 1.5f)
             // مقدار
@@ -565,8 +568,8 @@ private fun RadarChart(axes: List<String>, values: List<Float>, progress: Float)
                 }
                 close()
             }
-            drawPath(poly, extras.gold.copy(alpha = 0.25f))
-            drawPath(poly, extras.gold, Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(poly, color = extras.gold.copy(alpha = 0.25f))
+            drawPath(poly, color = extras.gold, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
             for (i in 0 until n) drawCircle(extras.gold, 4.dp.toPx(), pt(i, values[i] * progress))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -607,7 +610,7 @@ private fun LineChart(values: List<Float>, labels: List<String>, progress: Float
                     cubicTo(mid, pts[i - 1].y, mid, pts[i].y, pts[i].x, pts[i].y)
                 }
             }
-            drawPath(line, extras.gold, Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(line, color = extras.gold, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
             pts.forEach {
                 drawCircle(extras.gold.copy(alpha = 0.3f), 9.dp.toPx(), it)
                 drawCircle(scheme.surface, 5.dp.toPx(), it)
