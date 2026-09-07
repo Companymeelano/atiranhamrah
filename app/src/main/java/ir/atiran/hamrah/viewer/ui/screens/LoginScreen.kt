@@ -412,5 +412,11 @@ private fun DesignerFooter() {
                 letterSpacing = 2.sp,
             ),
         )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "نسخه ${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME}",
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.onPrimary.copy(alpha = 0.55f),
+        )
     }
 }
