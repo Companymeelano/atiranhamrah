@@ -121,7 +121,7 @@ private val productShare = listOf(
 
 private data class Hero(
     val title: String, val value: String, val desc: String,
-    val icon: ImageVector, val spark: List<Float>,
+    val icon: ImageVector, val spark: List<Int>,
 )
 private val heroes = listOf(
     Hero("مشتریان", "۲٬۱۲۰", "مشتری فعال در این دوره", Icons.Filled.Group, listOf(40, 48, 52, 58, 55, 64, 72)),
@@ -399,7 +399,7 @@ private fun HeroCard(h: Hero, motion: Boolean, modifier: Modifier = Modifier) {
                 color = scheme.primary,
             )
             Text(h.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            MicroArea(h.spark, scheme.primary)
+            MicroArea(h.spark.map { it.toFloat() }, scheme.primary)
         }
     }
 }

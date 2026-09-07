@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +29,7 @@ import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 
 @Composable
 fun AtiranApp(vm: AppViewModel) {
-    val theme = AppThemeId.entries.getOrNull(vm.themeId) ?: AppThemeId.OnyxGold
+    val theme = AppThemeId.entries.getOrNull(vm.themeId) ?: AppThemeId.Obsidian
 
     AtiranAppTheme(themeId = theme) {
         when (val s = vm.screen) {
