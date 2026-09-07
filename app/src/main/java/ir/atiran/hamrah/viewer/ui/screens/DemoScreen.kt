@@ -122,7 +122,7 @@ private val orders = listOf(
 
 private data class Kpi(
     val title: String, val target: Float, val suffix: String, val delta: String,
-    val icon: ImageVector, val up: Boolean, val spark: List<Float>,
+    val icon: ImageVector, val up: Boolean, val spark: List<Int>,
 )
 
 private val kpis = listOf(
@@ -336,8 +336,8 @@ private fun Gauge(percent: Float, progress: Float, centerTop: String, centerBott
                 val r2 = r1 + 4.dp.toPx()
                 drawLine(
                     color = scheme.outlineVariant.copy(alpha = 0.6f),
-                    start = Offset(size.center.x + (r1 * kotlin.math.cos(a)).toFloat(), size.center.y + (r1 * kotlin.math.sin(a)).toFloat()),
-                    end = Offset(size.center.x + (r2 * kotlin.math.cos(a)).toFloat(), size.center.y + (r2 * kotlin.math.sin(a)).toFloat()),
+                    start = Offset(center.x + (r1 * kotlin.math.cos(a)).toFloat(), center.y + (r1 * kotlin.math.sin(a)).toFloat()),
+                    end = Offset(center.x + (r2 * kotlin.math.cos(a)).toFloat(), center.y + (r2 * kotlin.math.sin(a)).toFloat()),
                     strokeWidth = 2f,
                 )
             }
@@ -413,7 +413,7 @@ private fun KpiCard(k: Kpi, index: Int, startDelay: Int, modifier: Modifier = Mo
                 fontWeight = FontWeight.Black,
             )
             Text(k.title, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            Sparkline(k.spark, accent, p)
+            Sparkline(k.spark.map { it.toFloat() }, accent, p)
         }
     }
 }
@@ -534,7 +534,7 @@ private fun RadarChart(axes: List<String>, values: List<Float>, progress: Float)
     val extras = LocalThemeExtras.current
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Canvas(Modifier.size(230.dp)) {
-            val c = size.center
+            val c = center
             val r = size.minDimension / 2 - 26.dp.toPx()
             val n = axes.size
             fun pt(idx: Int, frac: Float): Offset {

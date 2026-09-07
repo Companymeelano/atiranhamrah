@@ -27,7 +27,7 @@ import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 
 @Composable
 fun AtiranApp(vm: AppViewModel) {
-    val theme = AppThemeId.entries.getOrNull(vm.themeId) ?: AppThemeId.GalaxyNight
+    val theme = AppThemeId.entries.getOrNull(vm.themeId) ?: AppThemeId.OnyxGold
 
     AtiranAppTheme(themeId = theme) {
         when (val s = vm.screen) {
