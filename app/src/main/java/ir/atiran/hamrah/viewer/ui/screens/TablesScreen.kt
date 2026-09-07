@@ -12,8 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.shape.RoundedCornerShapeimport androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Refresh
@@ -26,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +44,7 @@ import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.data.TableInfo
 import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.EmptyBox
+import ir.atiran.hamrah.viewer.ui.components.LuxPanel
 import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
 import ir.atiran.hamrah.viewer.ui.components.LoadingBox
 import ir.atiran.hamrah.viewer.ui.components.SearchField
@@ -97,49 +95,37 @@ fun TablesScreen(vm: AppViewModel) {
             },
         )
 
-        // هدر وضعیت اتصال — هماهنگ با تم فعال
+        // هدر وضعیت اتصال — پنل یکدست هم‌رنگ تم
         overview?.let { o ->
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .background(Brush.horizontalGradient(listOf(scheme.primary, scheme.tertiary)))
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(extras.positive, RoundedCornerShape(50))
-                        )
-                        Box(Modifier.size(8.dp))
-                        Text(
-                            "متصل به ${settings.host} • ${settings.database}",
-                            color = scheme.onPrimary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    Text(
-                        "کاربر: ${settings.user}" +
-                            (o.version.takeIf { it.isNotBlank() }?.let { "  •  $it" } ?: ""),
-                        color = scheme.onPrimary.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.bodySmall,
+            LuxPanel(container = scheme.primaryContainer) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(extras.positive, RoundedCornerShape(50))
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        StatBlock("جداول", fmt(o.tables.size.toLong()), scheme.onPrimary)
-                        StatBlock("مجموع رکوردها", fmt(o.totalRows), scheme.onPrimary)
-                        StatBlock(
-                            "حجم دیتابیس",
-                            o.sizeMb?.let { String.format("%.1f MB", it) } ?: "—",
-                            scheme.onPrimary,
-                        )
-                    }
+                    Box(Modifier.size(8.dp))
+                    Text(
+                        "متصل به ${settings.host} • ${settings.database}",
+                        color = scheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Text(
+                    "کاربر: ${settings.user}" +
+                        (o.version.takeIf { it.isNotBlank() }?.let { "  •  $it" } ?: ""),
+                    color = scheme.onPrimaryContainer.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    StatBlock("جداول", fmt(o.tables.size.toLong()), scheme.onPrimaryContainer)
+                    StatBlock("مجموع رکوردها", fmt(o.totalRows), scheme.onPrimaryContainer)
+                    StatBlock(
+                        "حجم دیتابیس",
+                        o.sizeMb?.let { String.format("%.1f MB", it) } ?: "—",
+                        scheme.onPrimaryContainer,
+                    )
                 }
             }
         }

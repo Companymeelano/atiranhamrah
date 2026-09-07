@@ -141,6 +141,14 @@ fun TableDataScreen(vm: AppViewModel, schema: String, table: String) {
                                     .fillMaxWidth()
                                     .padding(vertical = 3.dp)
                                     .clickable { selectedRow = row },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                                ),
+                                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
                                     val preview = d.columns.take(4)

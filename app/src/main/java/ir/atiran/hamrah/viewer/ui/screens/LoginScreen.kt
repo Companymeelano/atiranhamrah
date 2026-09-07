@@ -1,5 +1,10 @@
 package ir.atiran.hamrah.viewer.ui.screens
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -130,11 +135,12 @@ fun LoginScreen(vm: AppViewModel) {
 
             Spacer(Modifier.height(22.dp))
 
-            // کارت ورود
+            // کارت ورود — هم‌سبک با پنل‌های برنامه (حاشیه مویی به‌جای سایه جداشده)
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.75f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
@@ -371,41 +377,119 @@ private fun themeSwatch(t: AppThemeId): List<Color> = when (t) {
 }
 
 // ------------------------------------------------------------ برندینگ
+/** پلاک لوکس طراح — کارت با حاشیه طلایی، مونوگرام، نام گرادیانی و نشان استودیو */
 @OptIn(ExperimentalTextApi::class)
 @Composable
 private fun DesignerFooter() {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            "طراحی و توسعه",
-            style = MaterialTheme.typography.labelSmall,
-            color = scheme.onPrimary.copy(alpha = 0.7f),
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            "Milad Yaghoobi",
-            style = TextStyle(
-                brush = Brush.linearGradient(extras.goldGradient),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp,
-            ),
-        )
-        Text(
-            "M E E L A N O   S T U D I O   D E S I G N",
-            style = TextStyle(
-                brush = Brush.linearGradient(extras.goldGradient),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 2.sp,
-            ),
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "نسخه ${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelSmall,
-            color = scheme.onPrimary.copy(alpha = 0.55f),
-        )
+    val shimmer = rememberInfiniteTransition(label = "footerShimmer")
+    val shine by shimmer.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2600), RepeatMode.Reverse),
+        label = "footerShine",
+    )
+
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            border = BorderStroke(1.dp, extras.gold.copy(alpha = 0.55f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                scheme.surface.copy(alpha = 0.0f),
+                                scheme.surface.copy(alpha = 0.85f),
+                                scheme.surface.copy(alpha = 0.0f),
+                            )
+                        )
+                    )
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // مونوگرام
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .border(
+                                width = 2.dp,
+                                color = extras.gold.copy(alpha = 0.4f + 0.3f * shine),
+                                shape = CircleShape,
+                            )
+                            .padding(3.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(extras.goldGradient)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "MY",
+                            color = extras.goldOn,
+                            fontWeight = FontWeight.Black,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "طراحی و توسعه اپلیکیشن",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onPrimary.copy(alpha = 0.65f),
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        "Milad Yaghoobi",
+                        style = TextStyle(
+                            brush = Brush.linearGradient(extras.goldGradient),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp,
+                        ),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    // جداکننده تزئینی
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .width(42.dp)
+                                .height(1.dp)
+                                .background(Brush.horizontalGradient(listOf(Color.Transparent, extras.gold.copy(alpha = 0.8f))))
+                        )
+                        Text(
+                            "✦",
+                            color = extras.gold,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                        )
+                        Box(
+                            Modifier
+                                .width(42.dp)
+                                .height(1.dp)
+                                .background(Brush.horizontalGradient(listOf(extras.gold.copy(alpha = 0.8f), Color.Transparent)))
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "M E E L A N O   S T U D I O   D E S I G N",
+                        style = TextStyle(
+                            brush = Brush.linearGradient(extras.goldGradient),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 3.sp,
+                        ),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "نسخه ${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onPrimary.copy(alpha = 0.5f),
+                    )
+                }
+            }
+        }
     }
 }

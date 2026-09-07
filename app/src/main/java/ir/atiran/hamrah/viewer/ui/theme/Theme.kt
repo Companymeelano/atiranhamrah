@@ -59,6 +59,8 @@ data class ThemeExtras(
     val loginGradient: List<Color>,
     /** رنگ‌های نمایشی انتخابگر تم */
     val swatch: List<Color>,
+    /** رنگ متن روی سطوح طلایی */
+    val goldOn: Color,
 )
 
 val LocalThemeExtras = staticCompositionLocalOf {
@@ -69,6 +71,7 @@ val LocalThemeExtras = staticCompositionLocalOf {
         goldGradient = listOf(Color(0xFFF9EDC8), Color(0xFFE3C579), Color(0xFFB08A3A)),
         loginGradient = listOf(Color(0xFF3A2E10), Color(0xFF08080C)),
         swatch = listOf(Color(0xFFE3C579), Color(0xFF08080C)),
+        goldOn = Color(0xFF221A05),
     )
 }
 
@@ -199,6 +202,7 @@ private fun extrasFor(id: AppThemeId) = when (id) {
         goldGradient = listOf(Color(0xFFF9EDC8), Color(0xFFE3C579), Color(0xFFB08A3A)),
         loginGradient = listOf(Color(0xFF3A2E10), Color(0xFF0A2A20), Color(0xFF08080C)),
         swatch = listOf(Color(0xFFE3C579), Color(0xFF08080C)),
+        goldOn = Color(0xFF221A05),
     )
     AppThemeId.VelvetRuby -> ThemeExtras(
         chart = listOf(Color(0xFFF3C4CF), Color(0xFFE3C579), Color(0xFFFFB86B), Color(0xFFC98BFF), Color(0xFF7FC8FF)),
@@ -207,6 +211,7 @@ private fun extrasFor(id: AppThemeId) = when (id) {
         goldGradient = listOf(Color(0xFFF9EDC8), Color(0xFFE3C579), Color(0xFFB08A3A)),
         loginGradient = listOf(Color(0xFF5D2238), Color(0xFF2E0E18), Color(0xFF140709)),
         swatch = listOf(Color(0xFFF3C4CF), Color(0xFF140709)),
+        goldOn = Color(0xFF221A05),
     )
     AppThemeId.PearlGold -> ThemeExtras(
         chart = listOf(Color(0xFF8A6414), Color(0xFF2F6B5E), Color(0xFFB4552E), Color(0xFF3E6E9E), Color(0xFF8E5BC8)),
@@ -215,6 +220,7 @@ private fun extrasFor(id: AppThemeId) = when (id) {
         goldGradient = listOf(Color(0xFFD9A62E), Color(0xFF8A6414), Color(0xFF6A4C0A)),
         loginGradient = listOf(Color(0xFF8A6414), Color(0xFFB4552E), Color(0xFF6A4C0A)),
         swatch = listOf(Color(0xFF8A6414), Color(0xFFFAF6EC)),
+        goldOn = Color(0xFFFFFFFF),
     )
     AppThemeId.PlatinumPistachio -> ThemeExtras(
         chart = listOf(Color(0xFF1F7A5C), Color(0xFF9C6B1F), Color(0xFF3E6E9E), Color(0xFFB4552E), Color(0xFF8E5BC8)),
@@ -223,6 +229,7 @@ private fun extrasFor(id: AppThemeId) = when (id) {
         goldGradient = listOf(Color(0xFFD9A62E), Color(0xFF9C6B1F), Color(0xFF7A520F)),
         loginGradient = listOf(Color(0xFF1F7A5C), Color(0xFF3E6E9E), Color(0xFF123A2C)),
         swatch = listOf(Color(0xFF1F7A5C), Color(0xFFF2F6F1)),
+        goldOn = Color(0xFFFFFFFF),
     )
 }
 
