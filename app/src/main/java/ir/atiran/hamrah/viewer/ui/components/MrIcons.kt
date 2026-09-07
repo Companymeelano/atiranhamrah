@@ -29,7 +29,7 @@ private fun mrIcon(
     viewportHeight = 24f,
 ).apply {
     strokes.forEach { p ->
-        path(
+        addPath(
             pathData = addPathNodes(p),
             fill = null,
             stroke = SolidColor(Color.Black),
@@ -39,7 +39,7 @@ private fun mrIcon(
         )
     }
     fills.forEach { p ->
-        path(pathData = addPathNodes(p), fill = SolidColor(Color.Black))
+        addPath(pathData = addPathNodes(p), fill = SolidColor(Color.Black))
     }
 }.build()
 
