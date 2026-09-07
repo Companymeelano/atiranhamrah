@@ -32,6 +32,7 @@ class SettingsStore(private val context: Context) {
         val sound = booleanPreferencesKey("sound")
         val motion = booleanPreferencesKey("motion")
         val ambient = booleanPreferencesKey("ambient")
+        val wowSweepDone = booleanPreferencesKey("wowSweepDone")
     }
 
     /** تم انتخابی کاربر (۰ تا ۳) */
@@ -57,6 +58,15 @@ class SettingsStore(private val context: Context) {
             it[Keys.motion] = e.motion
             it[Keys.ambient] = e.ambient
         }
+    }
+
+    /** آیا جاروی نورِ ورود اول قبلاً اجرا شده؟ (فقط یک‌بار در عمر برنامه) */
+    val wowSweepDone: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.wowSweepDone] ?: false
+    }
+
+    suspend fun setWowSweepDone() {
+        context.dataStore.edit { it[Keys.wowSweepDone] = true }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->

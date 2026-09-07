@@ -2,6 +2,8 @@ package ir.atiran.hamrah.viewer.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -60,6 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,6 +76,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -313,7 +317,7 @@ private fun OverviewTab(vm: AppViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
     ) {
-        MReportTitle()
+        MReportTitle(vm)
     }
 
     // ---------- M•R Pulse: امضای بصری ----------
@@ -371,13 +375,49 @@ private fun OverviewTab(vm: AppViewModel) {
 // ============================================================ تیتر پوستر
 @OptIn(ExperimentalTextApi::class)
 @Composable
-private fun MReportTitle() {
+private fun MReportTitle(vm: AppViewModel) {
     val extras = LocalThemeExtras.current
+    val wowDone by vm.wowSweepDone.collectAsState()
+
+    // ---- جاروی نور: فقط یک‌بار در اولین ورود (۱۰٪ Wow — بعد بازنشسته می‌شود) ----
+    val sweep = remember { Animatable(0f) }
+    var played by remember { mutableStateOf(false) }
+    LaunchedEffect(wowDone) {
+        if (wowDone == false && !played) {
+            played = true
+            delay(700)
+            sweep.animateTo(1f, tween(1500, easing = LinearEasing))
+            vm.markWowDone()
+        }
+    }
+
+    // نوار روشن که یک‌بار از چپ به راست از روی تیتر عبور می‌کند
+    val t = sweep.value
+    val titleBrush = if (t > 0f && t < 1f) {
+        val band = 0.26f
+        val c = t * (1f + band) - band / 2f
+        val s0 = (c - band / 2f).coerceIn(0f, 1f)
+        val s1 = c.coerceIn(0f, 1f)
+        val s2 = (c + band / 2f).coerceIn(0f, 1f)
+        val hi = lerp(extras.brand[1], Color.White, 0.85f)
+        Brush.horizontalGradient(
+            colorStops = listOf(
+                0f to extras.brand.first(),
+                s0 to extras.brand[1],
+                s1 to hi,
+                s2 to extras.brand[1],
+                1f to extras.brand.last(),
+            )
+        )
+    } else {
+        Brush.horizontalGradient(extras.brand)
+    }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             "M•REPORT",
             style = TextStyle(
-                brush = Brush.horizontalGradient(extras.brand),
+                brush = titleBrush,
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 3.sp,

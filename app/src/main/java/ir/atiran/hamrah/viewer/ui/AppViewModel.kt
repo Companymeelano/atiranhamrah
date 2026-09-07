@@ -12,6 +12,7 @@ import ir.atiran.hamrah.viewer.data.Experience
 import ir.atiran.hamrah.viewer.data.SettingsStore
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.data.TableInfo
+import ir.atiran.hamrah.viewer.ui.components.MotionFx
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -51,6 +52,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var experience by mutableStateOf(Experience())
         private set
 
+    /** جاروی نور ورود اول — null یعنی هنوز از DataStore نخوانده */
+    val wowSweepDone = store.wowSweepDone
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init {
         SoundFx.init(application)
 
@@ -61,6 +66,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             store.experience.collect {
                 experience = it
                 SoundFx.enabled = it.sound
+                MotionFx.enabled = it.motion
             }
         }
 
@@ -92,7 +98,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun updateExperience(e: Experience) {
         experience = e
         SoundFx.enabled = e.sound
+        MotionFx.enabled = e.motion
         viewModelScope.launch { store.setExperience(e) }
+    }
+
+    /** جاروی نور اجرا شد — دیگر هرگز تکرار نشود */
+    fun markWowDone() {
+        viewModelScope.launch { store.setWowSweepDone() }
     }
 
     /**

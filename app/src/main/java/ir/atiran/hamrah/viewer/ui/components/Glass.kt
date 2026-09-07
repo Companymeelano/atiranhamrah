@@ -1,6 +1,19 @@
 package ir.atiran.hamrah.viewer.ui.components
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -112,23 +125,125 @@ fun AmbientBackground(
 }
 
 // ============================================================ کارت شیشه‌ای
-/** پنل شیشه‌ای نیمه‌شفاف با خط مویی — بلوک ساختمانی M•REPORT */
+/**
+ * پنل شیشه‌ای نیمه‌شفاف با خط مویی — بلوک ساختمانی M•REPORT.
+ *
+ * سه لایه نور (فلسفه «نور منجمد»):
+ * ۱. هاله رنگی پشت کارت با ته‌رنگ تم — سایه‌ها هرگز مشکی نیستند
+ * ۲. سایه رنگی بسیار کم (elevation ۲dp)
+ * ۳. نور زیر نقطه لمس — کاربر نور را لمس می‌کند، نه دکمه را
+ */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     corner: Dp = 20.dp,
     fill: Color = LocalThemeExtras.current.glass,
+    glow: Boolean = true,
+    touchLight: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val hairline = LocalThemeExtras.current.hairline
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(corner))
-            .background(fill)
-            .border(1.dp, hairline, RoundedCornerShape(corner)),
-    ) {
-        Box(Modifier.padding(14.dp)) { content() }
+    val extras = LocalThemeExtras.current
+    val shape = RoundedCornerShape(corner)
+
+    // ---- نور زیر انگشت (draw-only، بدون recomposition) ----
+    val lightPos = remember { mutableStateOf<Offset?>(null) }
+    val lastPos = remember { mutableStateOf(Offset.Zero) }
+    val lightAlpha = remember { Animatable(0f) }
+    val hasLight by remember { derivedStateOf { lightPos.value != null } }
+    LaunchedEffect(hasLight) {
+        lightAlpha.animateTo(
+            targetValue = if (hasLight) 1f else 0f,
+            animationSpec = tween(if (hasLight) 160 else 420),
+        )
     }
+
+    Box(modifier) {
+        // ۱) هاله رنگی پشت کارت — نور از بالا، با ته‌رنگ تم
+        if (glow) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .drawBehind {
+                        val pad = 16.dp.toPx()
+                        drawRoundRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    extras.glow.copy(alpha = 0.10f),
+                                    Color.Transparent,
+                                ),
+                                center = Offset(size.width * 0.5f, -size.height * 0.3f),
+                                radius = size.width.coerceAtLeast(1f) * 1.15f,
+                            ),
+                            topLeft = Offset(-pad, -pad),
+                            size = Size(size.width + pad * 2f, size.height + pad * 2f),
+                            cornerRadius = CornerRadius(corner.toPx() + pad),
+                        )
+                    }
+            )
+        }
+        // ۲+۳) بدنه شیشه‌ای + سایه رنگی + نور لمس
+        Box(
+            Modifier
+                .shadow(
+                    elevation = 2.dp,
+                    shape = shape,
+                    ambientColor = extras.glow.copy(alpha = 0.30f),
+                    spotColor = extras.glow.copy(alpha = 0.45f),
+                )
+                .clip(shape)
+                .background(fill)
+                .drawWithContent {
+                    drawContent()
+                    if (touchLight && MotionFx.enabled && lightAlpha.value > 0.01f) {
+                        val p = lightPos.value ?: lastPos.value
+                        val r = 170.dp.toPx()
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    extras.glow.copy(alpha = 0.20f * lightAlpha.value),
+                                    Color.Transparent,
+                                ),
+                                center = p,
+                                radius = r,
+                            ),
+                            radius = r,
+                            center = p,
+                        )
+                    }
+                }
+                .border(1.dp, extras.hairline, shape)
+                .then(
+                    if (touchLight) {
+                        Modifier.pointerInput(Unit) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                lightPos.value = down.position
+                                lastPos.value = down.position
+                                try {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val pressed = event.changes.lastOrNull { it.pressed }
+                                        if (pressed == null) break
+                                        lightPos.value = pressed.position
+                                        lastPos.value = pressed.position
+                                    }
+                                } finally {
+                                    lightPos.value = null
+                                }
+                            }
+                        }
+                    } else Modifier
+                ),
+        ) {
+            Box(Modifier.padding(14.dp)) { content() }
+        }
+    }
+}
+
+/** سوئیچ سراسری افکت‌های حرکتی — از تنظیمات Interface Experience سینک می‌شود */
+object MotionFx {
+    @Volatile
+    var enabled = true
 }
 
 // ============================================================ نبض آرام
@@ -184,6 +299,12 @@ fun GlassAction(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
+                .shadow(
+                    elevation = 3.dp,
+                    shape = CircleShape,
+                    ambientColor = glow.copy(alpha = 0.35f),
+                    spotColor = glow.copy(alpha = 0.55f),
+                )
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(extras.glassStrong)
