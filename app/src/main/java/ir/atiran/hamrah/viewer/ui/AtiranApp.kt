@@ -54,7 +54,7 @@ private fun BootScreen() {
     val scheme = MaterialTheme.colorScheme
     val extras = ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras.current
     val tr = rememberInfiniteTransition(label = "boot")
-    val sweep by tr.animateFloat(
+    val sweep = tr.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -62,7 +62,7 @@ private fun BootScreen() {
             RepeatMode.Reverse,
         ),
         label = "sweep",
-    )
+    ).value
     Box(
         modifier = Modifier
             .fillMaxSize()
