@@ -1,6 +1,7 @@
 package ir.atiran.hamrah.viewer.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,11 +62,52 @@ fun ErrorBanner(message: String?, modifier: Modifier = Modifier) {
     }
 }
 
-/** Empty state. */
+/**
+ * Empty State پرمیوم — به‌جای «No Data»:
+ * تصویرسازی ساده (دایره شیشه‌ای + تیک) + پیام کوتاه + توضیح لطیف.
+ */
 @Composable
-fun EmptyBox(text: String = "داده‌ای یافت نشد", modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-        Text(text = text, color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun EmptyBox(
+    text: String = "همه‌چیز مرتب است",
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    Column(
+        modifier = modifier.fillMaxWidth().padding(vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(extras.glassStrong, androidx.compose.foundation.shape.CircleShape)
+                .border(1.dp, extras.hairline, androidx.compose.foundation.shape.CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = scheme.primary.copy(alpha = 0.85f),
+                modifier = Modifier.size(28.dp),
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+        )
+        if (subtitle != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
     }
 }
 

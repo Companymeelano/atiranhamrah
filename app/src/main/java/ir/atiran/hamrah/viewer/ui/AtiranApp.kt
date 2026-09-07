@@ -3,9 +3,11 @@ package ir.atiran.hamrah.viewer.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,8 +46,18 @@ fun AtiranApp(vm: AppViewModel) {
 
 @Composable
 private fun BootScreen() {
-    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val scheme = MaterialTheme.colorScheme
     val extras = ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras.current
+    val tr = androidx.compose.animation.core.rememberInfiniteTransition(label = "boot")
+    val sweep by tr.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1600),
+            androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "sweep",
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -53,29 +65,47 @@ private fun BootScreen() {
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(R.drawable.app_logo),
-                contentDescription = null,
-                modifier = Modifier.size(88.dp),
-            )
-            Spacer(modifier = Modifier.height(14.dp))
+            // لوگوی M•
             Text(
-                "M•REPORT",
-                color = scheme.onPrimary,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                letterSpacing = 3.sp,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                "Intelligent Reporting Experience",
-                color = scheme.onPrimary.copy(alpha = 0.75f),
-                style = MaterialTheme.typography.labelMedium,
-                letterSpacing = 3.sp,
+                "M•",
+                style = androidx.compose.ui.text.TextStyle(
+                    brush = Brush.horizontalGradient(extras.brand),
+                    fontSize = 76.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                ),
             )
             Spacer(modifier = Modifier.height(18.dp))
-            CircularProgressIndicator(color = scheme.onPrimary, strokeWidth = 3.dp)
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("در حال اتصال به سرور...", color = scheme.onPrimary.copy(alpha = 0.8f))
+            // خط نور که آرام حرکت می‌کند
+            Box(
+                modifier = Modifier
+                    .width(190.dp)
+                    .height(2.dp)
+                    .background(extras.hairline),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .absoluteOffset(x = (sweep * 65).dp)
+                        .width(60.dp)
+                        .height(2.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    androidx.compose.ui.graphics.Color.Transparent,
+                                    extras.brand[1],
+                                    extras.brand.last(),
+                                    androidx.compose.ui.graphics.Color.Transparent,
+                                )
+                            )
+                        ),
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Preparing your reports",
+                color = scheme.onPrimary.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelLarge,
+                letterSpacing = 2.sp,
+            )
         }
     }
 }

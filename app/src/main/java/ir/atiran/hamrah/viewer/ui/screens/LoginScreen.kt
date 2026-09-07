@@ -1,12 +1,6 @@
 package ir.atiran.hamrah.viewer.ui.screens
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,7 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -73,7 +67,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ir.atiran.hamrah.viewer.R
+import androidx.compose.ui.window.Dialog
 import ir.atiran.hamrah.viewer.data.DbSettings
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.ui.AppViewModel
@@ -100,6 +94,8 @@ fun LoginScreen(vm: AppViewModel) {
     var rememberMe by remember { mutableStateOf(saved.remember) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var themeSheet by remember { mutableStateOf(false) }
+    var soundSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     AmbientBackground(enabled = vm.experience.ambient) {
@@ -110,34 +106,47 @@ fun LoginScreen(vm: AppViewModel) {
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(44.dp))
+            Spacer(Modifier.height(18.dp))
+
+            // ---------- نوار بالا: دو آیکون شیشه‌ای ظریف (تم + صدا) ----------
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TopIconButton(Icons.Filled.Palette, "شخصیت بصری") { themeSheet = true; SoundFx.soft() }
+                Spacer(Modifier.width(10.dp))
+                TopIconButton(Icons.Filled.GraphicEq, "تجربه رابط") { soundSheet = true; SoundFx.soft() }
+            }
+
+            Spacer(Modifier.height(10.dp))
 
             // ---------- پوستر M•REPORT ----------
             Text(
                 "M•REPORT",
                 style = TextStyle(
-                    brush = Brush.horizontalGradient(extras.metallic),
-                    fontSize = 40.sp,
+                    brush = Brush.horizontalGradient(extras.brand),
+                    fontSize = 38.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 3.sp,
                 ),
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(5.dp))
             Text(
                 "Intelligent Reporting Experience",
                 style = MaterialTheme.typography.labelLarge,
                 letterSpacing = 4.sp,
-                color = scheme.onPrimary.copy(alpha = 0.85f),
+                color = scheme.onBackground.copy(alpha = 0.72f),
             )
             Spacer(Modifier.height(12.dp))
             LightLine(width = 210.dp)
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(22.dp))
 
-            // کارت ورود شیشه‌ای
+            // ---------- کارت ورود (فقط ضروری‌ها) ----------
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = scheme.surface.copy(alpha = 0.92f)),
+                colors = CardDefaults.cardColors(containerColor = scheme.surface.copy(alpha = 0.94f)),
                 border = BorderStroke(1.dp, extras.hairline),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -220,12 +229,6 @@ fun LoginScreen(vm: AppViewModel) {
                         Text("اطلاعات ورود را به خاطر بسپار", style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    // ---------- چهار شخصیت تم ----------
-                    ThemePicker(vm)
-
-                    // ---------- Interface Experience ----------
-                    ExperiencePanel(vm)
-
                     ErrorBanner(error)
 
                     Button(
@@ -269,11 +272,7 @@ fun LoginScreen(vm: AppViewModel) {
                             Spacer(Modifier.size(10.dp))
                             Text("در حال اتصال...")
                         } else {
-                            Text(
-                                "ورود",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                            Text("ورود", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         }
                     }
 
@@ -291,63 +290,90 @@ fun LoginScreen(vm: AppViewModel) {
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
-            DesignerFooter()
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(18.dp))
+
+            // ---------- امضای فشرده طراح ----------
+            DesignerStrip()
+
+            Spacer(Modifier.height(26.dp))
         }
+    }
+
+    if (themeSheet) {
+        ThemeSheet(vm) { themeSheet = false }
+    }
+    if (soundSheet) {
+        ExperienceSheet(vm) { soundSheet = false }
     }
 }
 
-// ------------------------------------------------------------ انتخاب تم
+// ------------------------------------------------------------ آیکون بالای صفحه
 @Composable
-private fun ThemePicker(vm: AppViewModel) {
+private fun TopIconButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
+    val extras = LocalThemeExtras.current
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(extras.glassStrong)
+            .border(1.dp, extras.hairline, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = desc, tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.size(19.dp))
+    }
+}
+
+// ------------------------------------------------------------ شیت انتخاب تم
+@Composable
+private fun ThemeSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Palette, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(6.dp))
-            Text(
-                "شخصیت بصری",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Palette, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("شخصیت بصری", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
             AppThemeId.entries.forEach { t ->
                 val selected = vm.themeId == t.ordinal
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (selected) scheme.primaryContainer.copy(alpha = 0.5f) else extras.glass)
+                        .border(
+                            1.dp,
+                            if (selected) scheme.primary else extras.hairline,
+                            RoundedCornerShape(14.dp),
+                        )
+                        .clickable { vm.setTheme(t.ordinal); SoundFx.soft(); onDismiss() }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
                     Box(
-                        modifier = Modifier
-                            .size(44.dp)
+                        Modifier
+                            .size(38.dp)
                             .clip(CircleShape)
                             .background(Brush.linearGradient(themeSwatch(t)))
-                            .border(
-                                width = if (selected) 3.dp else 1.dp,
-                                color = if (selected) scheme.primary else extras.hairline,
-                                shape = CircleShape,
-                            )
-                            .clickable {
-                                vm.setTheme(t.ordinal)
-                                SoundFx.soft()
-                            },
+                            .border(1.dp, extras.hairline, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (selected) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        }
+                        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        t.shortName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) scheme.primary else scheme.onSurfaceVariant,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(t.shortName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Text(t.faName, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    }
                 }
             }
         }
@@ -361,146 +387,101 @@ private fun themeSwatch(t: AppThemeId): List<Color> = when (t) {
     AppThemeId.Ivory -> listOf(Color(0xFFA3B894), Color(0xFFF7F4EC))
 }
 
-// ------------------------------------------------------------ تنظیمات تجربه
+// ------------------------------------------------------------ شیت تجربه رابط
 @Composable
-private fun ExperiencePanel(vm: AppViewModel) {
+private fun ExperienceSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val exp = vm.experience
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.size(6.dp))
-            Text(
-                "Interface Experience",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-            )
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, LocalThemeExtras.current.hairline, RoundedCornerShape(24.dp))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Interface Experience", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            ExpRow("Sound Effects", "صداهای کوتاه فقط برای رویدادهای مهم", exp.sound) {
+                vm.updateExperience(exp.copy(sound = it))
+            }
+            ExpRow("Motion Effects", "انیمیشن‌های نرم نمودارها و کارت‌ها", exp.motion) {
+                vm.updateExperience(exp.copy(motion = it))
+            }
+            ExpRow("Ambient Effects", "نور محیطی بسیار محو پس‌زمینه", exp.ambient) {
+                vm.updateExperience(exp.copy(ambient = it))
+            }
         }
-        Spacer(Modifier.height(4.dp))
-        ExperienceRow(
-            icon = Icons.Filled.MusicNote,
-            title = "Sound Effects",
-            subtitle = "صداهای کوتاه فقط برای رویدادهای مهم",
-            checked = exp.sound,
-        ) { vm.updateExperience(exp.copy(sound = it)) }
-        ExperienceRow(
-            icon = Icons.Filled.GraphicEq,
-            title = "Motion Effects",
-            subtitle = "انیمیشن‌های نرم نمودارها و کارت‌ها",
-            checked = exp.motion,
-        ) { vm.updateExperience(exp.copy(motion = it)) }
-        ExperienceRow(
-            icon = Icons.Filled.Palette,
-            title = "Ambient Effects",
-            subtitle = "نور محیطی بسیار محو پس‌زمینه",
-            checked = exp.ambient,
-        ) { vm.updateExperience(exp.copy(ambient = it)) }
     }
 }
 
 @Composable
-private fun ExperienceRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
+private fun ExpRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(
             checked = checked,
             onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = scheme.primary),
+            colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary),
         )
     }
 }
 
-// ------------------------------------------------------------ برندینگ
+// ------------------------------------------------------------ امضای فشرده طراح
+/** یک ردیف ظریف — بدون اشغال فضای عمودی */
 @OptIn(ExperimentalTextApi::class)
 @Composable
-private fun DesignerFooter() {
+private fun DesignerStrip() {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    val shimmer = rememberInfiniteTransition(label = "footerShimmer")
-    val shine by shimmer.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2600), RepeatMode.Reverse),
-        label = "footerShine",
-    )
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Box(
             modifier = Modifier
-                .size(54.dp)
-                .border(
-                    width = 2.dp,
-                    color = extras.gold.copy(alpha = 0.4f + 0.3f * shine),
-                    shape = CircleShape,
-                )
-                .padding(3.dp)
+                .size(30.dp)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(extras.goldGradient)),
+                .background(Brush.linearGradient(extras.goldGradient))
+                .border(1.dp, extras.gold.copy(alpha = 0.45f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
+            Text("MY", color = extras.goldOn, fontSize = 10.sp, fontWeight = FontWeight.Black)
+        }
+        Column {
             Text(
-                "MY",
-                color = extras.goldOn,
-                fontWeight = FontWeight.Black,
-                style = MaterialTheme.typography.titleMedium,
+                "Milad Yaghoobi",
+                style = TextStyle(
+                    brush = Brush.horizontalGradient(extras.goldGradient),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.4.sp,
+                ),
+            )
+            Text(
+                "M E E L A N O   S T U D I O   D E S I G N",
+                style = TextStyle(
+                    brush = Brush.horizontalGradient(extras.goldGradient),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 2.sp,
+                ),
             )
         }
-        Spacer(Modifier.height(8.dp))
         Text(
-            "Milad Yaghoobi",
-            style = TextStyle(
-                brush = Brush.linearGradient(extras.goldGradient),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp,
-            ),
-        )
-        Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .width(42.dp)
-                    .height(1.dp)
-                    .background(Brush.horizontalGradient(listOf(Color.Transparent, extras.gold.copy(alpha = 0.8f))))
-            )
-            Text("✦", color = extras.gold, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
-            Box(
-                Modifier
-                    .width(42.dp)
-                    .height(1.dp)
-                    .background(Brush.horizontalGradient(listOf(extras.gold.copy(alpha = 0.8f), Color.Transparent)))
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "M E E L A N O   S T U D I O   D E S I G N",
-            style = TextStyle(
-                brush = Brush.linearGradient(extras.goldGradient),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 3.sp,
-            ),
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "نسخه ${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME} • M•REPORT",
+            "v${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.labelSmall,
-            color = scheme.onPrimary.copy(alpha = 0.5f),
+            color = scheme.onBackground.copy(alpha = 0.45f),
         )
     }
 }

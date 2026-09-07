@@ -214,7 +214,7 @@ fun GlassAction(
 @Composable
 fun LightLine(width: Dp = 190.dp, alpha: Float = 0.9f) {
     val extras = LocalThemeExtras.current
-    val c = extras.metallic
+    val c = extras.brand
     Box(
         Modifier
             .width(width)

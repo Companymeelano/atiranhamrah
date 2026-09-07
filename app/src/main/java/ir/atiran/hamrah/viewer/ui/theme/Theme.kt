@@ -82,6 +82,8 @@ data class ThemeExtras(
     val hairline: Color,
     /** رنگ‌های نور محیطی (آلفا در کامپوننت اعمال می‌شود) */
     val ambient: List<Color>,
+    /** گرادیان برند M•REPORT — در تم‌های روشن تیره‌تر برای کنتراست */
+    val brand: List<Color>,
 )
 
 val LocalThemeExtras = staticCompositionLocalOf {
@@ -99,6 +101,7 @@ val LocalThemeExtras = staticCompositionLocalOf {
         glassStrong = Color(0x17FFFFFF),
         hairline = Color(0x1AFFFFFF),
         ambient = listOf(Color(0xFF6E4EFF), Color(0xFF3E7BD9), Color(0xFF4A2A8A)),
+        brand = listOf(Color(0xFFB4A0FF), Color(0xFF8FA8FF), Color(0xFF9BD4FF)),
     )
 }
 
@@ -144,6 +147,7 @@ private val ObsidianExtras = ThemeExtras(
     glassStrong = Color(0x17FFFFFF),
     hairline = Color(0x1AFFFFFF),
     ambient = listOf(Color(0xFF6E4EFF), Color(0xFF3E7BD9), Color(0xFF4A2A8A)),
+    brand = listOf(Color(0xFFB4A0FF), Color(0xFF8FA8FF), Color(0xFF9BD4FF)),
 )
 
 // ---------------------------------------- تم ۲: میلانو رویال (گرافیتی + طلای شامپاینی)
@@ -188,6 +192,7 @@ private val MilanoExtras = ThemeExtras(
     glassStrong = Color(0x1AFFFFFF),
     hairline = Color(0x1CFFFFFF),
     ambient = listOf(Color(0xFFB98F44), Color(0xFF6A4E26), Color(0xFF43506A)),
+    brand = listOf(Color(0xFFF2E0AC), Color(0xFFE3C579), Color(0xFFBE9450)),
 )
 
 // ---------------------------------------- تم ۳: پرل (سفید + نقره + آبی آسمانی)
@@ -232,6 +237,7 @@ private val PearlExtras = ThemeExtras(
     glassStrong = Color(0x12000000),
     hairline = Color(0x1A000000),
     ambient = listOf(Color(0xFF7FA7E8), Color(0xFFB9C6D9), Color(0xFF9DB8E8)),
+    brand = listOf(Color(0xFF5B8DEF), Color(0xFF2E6BE6), Color(0xFF1E4FB8)),
 )
 
 // ---------------------------------------- تم ۴: آیووری (عاج + مریم‌گلی + شامپاینی)
@@ -276,6 +282,7 @@ private val IvoryExtras = ThemeExtras(
     glassStrong = Color(0x12000000),
     hairline = Color(0x1A000000),
     ambient = listOf(Color(0xFFA3B894), Color(0xFFD6BE8A), Color(0xFFC9AE72)),
+    brand = listOf(Color(0xFF8FA36F), Color(0xFF6E7F60), Color(0xFF55624A)),
 )
 
 private fun schemeFor(id: AppThemeId) = when (id) {

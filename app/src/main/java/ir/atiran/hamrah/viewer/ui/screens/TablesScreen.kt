@@ -150,12 +150,12 @@ fun TablesScreen(vm: AppViewModel) {
 
         when {
             loading && overview == null -> LoadingBox()
-            overview == null -> EmptyBox("اطلاعاتی دریافت نشد")
+            overview == null -> EmptyBox("اطلاعاتی دریافت نشد", subtitle = "در دریافت جداول از سرور مشکلی پیش آمد")
             else -> {
                 val tables = overview!!.tables
                     .filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
                 if (tables.isEmpty()) {
-                    EmptyBox("جدولی با این نام یافت نشد")
+                    EmptyBox("جدولی با این نام یافت نشد", subtitle = "عبارت دیگری را جستجو کنید")
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(tables, key = { it.schema + "." + it.name }) { t ->

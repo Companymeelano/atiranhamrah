@@ -315,6 +315,28 @@ private fun OverviewTab(vm: AppViewModel) {
         MReportTitle()
     }
 
+    // ---------- M•R Pulse: امضای بصری ----------
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Business Pulse",
+                style = MaterialTheme.typography.labelMedium,
+                letterSpacing = 2.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                PulseItem("مشتریان", Color(0xFF69DB7C))
+                PulseItem("مطالبات", Color(0xFFFFA94D))
+                PulseItem("چک‌ها", Color(0xFFFF6B6B))
+                PulseItem("موجودی", Color(0xFF69DB7C))
+                PulseItem("سیستم", extras.accent)
+            }
+        }
+    }
+
     // ---------- چهار کارت اصلی ----------
     heroes.chunked(2).forEach { row ->
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -354,7 +376,7 @@ private fun MReportTitle() {
         Text(
             "M•REPORT",
             style = TextStyle(
-                brush = Brush.horizontalGradient(extras.metallic),
+                brush = Brush.horizontalGradient(extras.brand),
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 3.sp,
@@ -369,6 +391,20 @@ private fun MReportTitle() {
         )
         Spacer(Modifier.height(10.dp))
         LightLine(width = 200.dp)
+    }
+}
+
+// ============================================================ آیتم نبض
+@Composable
+private fun PulseItem(label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        CalmPulse(color, dotSize = 8.dp, enabled = false)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -953,6 +989,12 @@ private fun NotificationsTab(vm: AppViewModel) {
             }
         }
         val list = notifs.filter { filter == "همه" || it.cat == filter }
+        if (list.isEmpty()) {
+            ir.atiran.hamrah.viewer.ui.components.EmptyBox(
+                text = "همه‌چیز مرتب است",
+                subtitle = "در این دسته اعلان جدیدی وجود ندارد",
+            )
+        }
         list.forEach { n ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,

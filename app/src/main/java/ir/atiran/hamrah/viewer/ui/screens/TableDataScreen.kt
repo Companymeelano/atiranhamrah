@@ -130,7 +130,10 @@ fun TableDataScreen(vm: AppViewModel, schema: String, table: String) {
                 }
                 val d = data!!
                 if (d.rows.isEmpty()) {
-                    EmptyBox(if (activeQuery.isBlank()) "این جدول خالی است" else "نتیجه‌ای برای جستجو یافت نشد")
+                    EmptyBox(
+                        if (activeQuery.isBlank()) "این جدول خالی است" else "نتیجه‌ای برای جستجو یافت نشد",
+                        subtitle = if (activeQuery.isBlank()) "هنوز رکوردی در این جدول ثبت نشده است" else "در بازه انتخاب‌شده رکوردی دریافت نشد",
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
