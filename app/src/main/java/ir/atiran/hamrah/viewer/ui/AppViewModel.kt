@@ -81,6 +81,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         screen = Screen.Login
     }
 
+    /** نمایش حالت دمو (نمونه امکانات برنامه) */
+    fun openDemo() {
+        screen = Screen.Demo
+    }
+
+    fun closeDemo() {
+        screen = if (db != null) Screen.Tables else Screen.Login
+    }
+
     /** خروج — رمز ذخیره‌شده پاک می‌شود */
     fun logout() {
         viewModelScope.launch {

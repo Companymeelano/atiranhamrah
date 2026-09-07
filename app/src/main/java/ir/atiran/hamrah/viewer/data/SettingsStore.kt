@@ -3,6 +3,7 @@ package ir.atiran.hamrah.viewer.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +21,16 @@ class SettingsStore(private val context: Context) {
         val user = stringPreferencesKey("user")
         val password = stringPreferencesKey("password")
         val remember = booleanPreferencesKey("remember")
+        val themeId = intPreferencesKey("themeId")
+    }
+
+    /** تم انتخابی کاربر (۰ تا ۳) */
+    val themeId: Flow<Int> = context.dataStore.data.map { p ->
+        (p[Keys.themeId] ?: 0).coerceIn(0, 3)
+    }
+
+    suspend fun setTheme(id: Int) {
+        context.dataStore.edit { it[Keys.themeId] = id.coerceIn(0, 3) }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->

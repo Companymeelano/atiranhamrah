@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TableChart
@@ -50,11 +51,14 @@ import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
 import ir.atiran.hamrah.viewer.ui.components.LoadingBox
 import ir.atiran.hamrah.viewer.ui.components.SearchField
 import ir.atiran.hamrah.viewer.ui.components.fmt
+import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TablesScreen(vm: AppViewModel) {
     val settings by vm.settings.collectAsState()
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
     var overview by remember { mutableStateOf<Overview?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -78,6 +82,9 @@ fun TablesScreen(vm: AppViewModel) {
         TopAppBar(
             title = { Text("آتیران همراه — مدیریت دیتابیس") },
             actions = {
+                IconButton(onClick = { vm.openDemo() }) {
+                    Icon(Icons.Filled.Insights, contentDescription = "نمایش دمو")
+                }
                 IconButton(onClick = { reloadTick += 1 }) {
                     Icon(Icons.Filled.Refresh, contentDescription = "بازخوانی")
                 }
@@ -90,7 +97,7 @@ fun TablesScreen(vm: AppViewModel) {
             },
         )
 
-        // هدر وضعیت اتصال
+        // هدر وضعیت اتصال — هماهنگ با تم فعال
         overview?.let { o ->
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -100,11 +107,7 @@ fun TablesScreen(vm: AppViewModel) {
             ) {
                 Column(
                     modifier = Modifier
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color(0xFF00674B), Color(0xFF0E8A64))
-                            )
-                        )
+                        .background(Brush.horizontalGradient(listOf(scheme.primary, scheme.tertiary)))
                         .padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -112,25 +115,30 @@ fun TablesScreen(vm: AppViewModel) {
                         Box(
                             modifier = Modifier
                                 .size(10.dp)
-                                .background(Color(0xFF8EF8CD), RoundedCornerShape(50))
+                                .background(extras.positive, RoundedCornerShape(50))
                         )
-                        Spacer8()
+                        Box(Modifier.size(8.dp))
                         Text(
                             "متصل به ${settings.host} • ${settings.database}",
-                            color = Color.White,
+                            color = scheme.onPrimary,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                         )
                     }
                     Text(
-                        "کاربر: ${settings.user}" + (o.version.takeIf { it.isNotBlank() }?.let { "  •  $it" } ?: ""),
-                        color = Color(0xCCFFFFFF),
+                        "کاربر: ${settings.user}" +
+                            (o.version.takeIf { it.isNotBlank() }?.let { "  •  $it" } ?: ""),
+                        color = scheme.onPrimary.copy(alpha = 0.8f),
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        StatBlock("جداول", fmt(o.tables.size.toLong()))
-                        StatBlock("مجموع رکوردها", fmt(o.totalRows))
-                        StatBlock("حجم دیتابیس", o.sizeMb?.let { String.format("%.1f MB", it) } ?: "—")
+                        StatBlock("جداول", fmt(o.tables.size.toLong()), scheme.onPrimary)
+                        StatBlock("مجموع رکوردها", fmt(o.totalRows), scheme.onPrimary)
+                        StatBlock(
+                            "حجم دیتابیس",
+                            o.sizeMb?.let { String.format("%.1f MB", it) } ?: "—",
+                            scheme.onPrimary,
+                        )
                     }
                 }
             }
@@ -147,7 +155,9 @@ fun TablesScreen(vm: AppViewModel) {
         if (error != null && overview == null) {
             Button(
                 onClick = { reloadTick += 1 },
-                modifier = Modifier.padding(bottom = 8.dp).align(Alignment.CenterHorizontally),
+                modifier = Modifier
+                    .padding(bottom = 8.dp)
+                    .align(Alignment.CenterHorizontally),
             ) { Text("تلاش دوباره") }
         }
 
@@ -162,7 +172,7 @@ fun TablesScreen(vm: AppViewModel) {
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(tables, key = { it.schema + "." + it.name }) { t ->
-                            TableRow(t) { vm.openTable(t) }
+                            TableRowItem(t) { vm.openTable(t) }
                             HorizontalDivider()
                         }
                     }
@@ -173,18 +183,15 @@ fun TablesScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun Spacer8() = androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-
-@Composable
-private fun StatBlock(label: String, value: String) {
+private fun StatBlock(label: String, value: String, valueColor: Color) {
     Column {
-        Text(value, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-        Text(label, color = Color(0xB3FFFFFF), style = MaterialTheme.typography.labelSmall)
+        Text(value, color = valueColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        Text(label, color = valueColor.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
     }
 }
 
 @Composable
-private fun TableRow(t: TableInfo, onClick: () -> Unit) {
+private fun TableRowItem(t: TableInfo, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(t.name, fontWeight = FontWeight.Medium) },
         supportingContent = {
