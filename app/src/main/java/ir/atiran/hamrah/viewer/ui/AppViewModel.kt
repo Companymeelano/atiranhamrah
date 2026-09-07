@@ -89,7 +89,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** تغییر تنظیمات تجربه */
-    fun setExperience(e: Experience) {
+    fun updateExperience(e: Experience) {
         experience = e
         SoundFx.enabled = e.sound
         viewModelScope.launch { store.setExperience(e) }

@@ -382,19 +382,19 @@ private fun ExperiencePanel(vm: AppViewModel) {
             title = "Sound Effects",
             subtitle = "صداهای کوتاه فقط برای رویدادهای مهم",
             checked = exp.sound,
-        ) { vm.setExperience(exp.copy(sound = it)) }
+        ) { vm.updateExperience(exp.copy(sound = it)) }
         ExperienceRow(
             icon = Icons.Filled.GraphicEq,
             title = "Motion Effects",
             subtitle = "انیمیشن‌های نرم نمودارها و کارت‌ها",
             checked = exp.motion,
-        ) { vm.setExperience(exp.copy(motion = it)) }
+        ) { vm.updateExperience(exp.copy(motion = it)) }
         ExperienceRow(
             icon = Icons.Filled.Palette,
             title = "Ambient Effects",
             subtitle = "نور محیطی بسیار محو پس‌زمینه",
             checked = exp.ambient,
-        ) { vm.setExperience(exp.copy(ambient = it)) }
+        ) { vm.updateExperience(exp.copy(ambient = it)) }
     }
 }
 
