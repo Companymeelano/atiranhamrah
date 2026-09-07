@@ -2,6 +2,8 @@ package ir.atiran.hamrah.viewer.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -86,7 +89,7 @@ fun EmptyBox(
             contentAlignment = Alignment.Center,
         ) {
             androidx.compose.material3.Icon(
-                androidx.compose.material.icons.Icons.Filled.CheckCircle,
+                Icons.Filled.CheckCircle,
                 contentDescription = null,
                 tint = scheme.primary.copy(alpha = 0.85f),
                 modifier = Modifier.size(28.dp),

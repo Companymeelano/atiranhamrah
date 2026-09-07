@@ -1,4 +1,9 @@
 package ir.atiran.hamrah.viewer.ui
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -48,13 +53,13 @@ fun AtiranApp(vm: AppViewModel) {
 private fun BootScreen() {
     val scheme = MaterialTheme.colorScheme
     val extras = ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras.current
-    val tr = androidx.compose.animation.core.rememberInfiniteTransition(label = "boot")
+    val tr = rememberInfiniteTransition(label = "boot")
     val sweep by tr.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            androidx.compose.animation.core.tween(1600),
-            androidx.compose.animation.core.RepeatMode.Reverse,
+        animationSpec = infiniteRepeatable(
+            tween(1600),
+            RepeatMode.Reverse,
         ),
         label = "sweep",
     )

@@ -302,6 +302,7 @@ private fun MTab(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun OverviewTab(vm: AppViewModel) {
     val motion = vm.experience.motion
+    val extras = LocalThemeExtras.current
     val g1 = stagger(0, motion)
     val g2 = stagger(200, motion)
     val g3 = stagger(400, motion)
