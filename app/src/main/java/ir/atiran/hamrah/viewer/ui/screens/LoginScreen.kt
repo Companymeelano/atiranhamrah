@@ -29,7 +29,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayCircle
@@ -47,6 +49,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -73,9 +77,12 @@ import ir.atiran.hamrah.viewer.R
 import ir.atiran.hamrah.viewer.data.DbSettings
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.ui.AppViewModel
+import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
+import ir.atiran.hamrah.viewer.ui.components.LightLine
 import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
+import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.launch
 
 @Composable
@@ -95,11 +102,7 @@ fun LoginScreen(vm: AppViewModel) {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(extras.loginGradient))
-    ) {
+    AmbientBackground(enabled = vm.experience.ambient) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -107,55 +110,42 @@ fun LoginScreen(vm: AppViewModel) {
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(44.dp))
 
-            // لوگوی سه‌بعدی
-            Box(
-                modifier = Modifier
-                    .size(110.dp)
-                    .clip(CircleShape)
-                    .border(3.dp, scheme.primary.copy(alpha = 0.55f), CircleShape),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.app_logo),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            Spacer(Modifier.height(14.dp))
+            // ---------- پوستر M•REPORT ----------
             Text(
-                "آتیران همراه",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                color = scheme.onPrimary,
+                "M•REPORT",
+                style = TextStyle(
+                    brush = Brush.horizontalGradient(extras.metallic),
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp,
+                ),
             )
+            Spacer(Modifier.height(6.dp))
             Text(
-                "مدیریت هوشمند آجیل و خشکبار",
-                style = MaterialTheme.typography.bodyLarge,
+                "Intelligent Reporting Experience",
+                style = MaterialTheme.typography.labelLarge,
+                letterSpacing = 4.sp,
                 color = scheme.onPrimary.copy(alpha = 0.85f),
             )
+            Spacer(Modifier.height(12.dp))
+            LightLine(width = 210.dp)
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // کارت ورود — هم‌سبک با پنل‌های برنامه (حاشیه مویی به‌جای سایه جداشده)
+            // کارت ورود شیشه‌ای
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.75f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = scheme.surface.copy(alpha = 0.92f)),
+                border = BorderStroke(1.dp, extras.hairline),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        "ورود به سیستم",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.primary,
-                    )
-
                     OutlinedTextField(
                         value = host,
                         onValueChange = { host = it },
@@ -210,7 +200,7 @@ fun LoginScreen(vm: AppViewModel) {
                             IconButton(onClick = { showPass = !showPass }) {
                                 Icon(
                                     if (showPass) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                    contentDescription = if (showPass) "پنهان‌کردن رمز" else "نمایش رمز",
+                                    contentDescription = null,
                                 )
                             }
                         },
@@ -230,8 +220,11 @@ fun LoginScreen(vm: AppViewModel) {
                         Text("اطلاعات ورود را به خاطر بسپار", style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    // انتخاب تم
+                    // ---------- چهار شخصیت تم ----------
                     ThemePicker(vm)
+
+                    // ---------- Interface Experience ----------
+                    ExperiencePanel(vm)
 
                     ErrorBanner(error)
 
@@ -250,6 +243,7 @@ fun LoginScreen(vm: AppViewModel) {
                                         remember = rememberMe,
                                     )
                                     vm.login(cfg)
+                                    SoundFx.success()
                                 } catch (e: Exception) {
                                     error = SqlServerDb.friendly(e)
                                 } finally {
@@ -287,20 +281,18 @@ fun LoginScreen(vm: AppViewModel) {
                         onClick = { vm.openDemo() },
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.primary),
+                        border = BorderStroke(1.dp, extras.hairline),
                         modifier = Modifier.fillMaxWidth().height(46.dp),
                     ) {
                         Icon(Icons.Filled.PlayCircle, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("مشاهده دموی برنامه")
+                        Text("مشاهده تجربه M•REPORT")
                     }
                 }
             }
 
             Spacer(Modifier.height(20.dp))
-
-            // برندینگ طراح
             DesignerFooter()
-
             Spacer(Modifier.height(28.dp))
         }
     }
@@ -310,20 +302,15 @@ fun LoginScreen(vm: AppViewModel) {
 @Composable
 private fun ThemePicker(vm: AppViewModel) {
     val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Filled.Palette,
-                contentDescription = null,
-                tint = scheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(Icons.Filled.Palette, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(6.dp))
             Text(
-                "ظاهر برنامه",
+                "شخصیت بصری",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = scheme.onSurface,
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -333,28 +320,25 @@ private fun ThemePicker(vm: AppViewModel) {
         ) {
             AppThemeId.entries.forEach { t ->
                 val selected = vm.themeId == t.ordinal
-                val swatch = themeSwatch(t)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(Brush.linearGradient(swatch))
+                            .background(Brush.linearGradient(themeSwatch(t)))
                             .border(
                                 width = if (selected) 3.dp else 1.dp,
-                                color = if (selected) scheme.primary else scheme.outlineVariant,
+                                color = if (selected) scheme.primary else extras.hairline,
                                 shape = CircleShape,
                             )
-                            .clickable { vm.setTheme(t.ordinal) },
+                            .clickable {
+                                vm.setTheme(t.ordinal)
+                                SoundFx.soft()
+                            },
                         contentAlignment = Alignment.Center,
                     ) {
                         if (selected) {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp),
-                            )
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -370,16 +354,80 @@ private fun ThemePicker(vm: AppViewModel) {
     }
 }
 
-/** رنگ نمایشی هر تم برای دایره انتخاب */
 private fun themeSwatch(t: AppThemeId): List<Color> = when (t) {
-    AppThemeId.OnyxGold -> listOf(Color(0xFFE3C579), Color(0xFF08080C))
-    AppThemeId.VelvetRuby -> listOf(Color(0xFFF3C4CF), Color(0xFF140709))
-    AppThemeId.PearlGold -> listOf(Color(0xFF8A6414), Color(0xFFFAF6EC))
-    AppThemeId.PlatinumPistachio -> listOf(Color(0xFF1F7A5C), Color(0xFFF2F6F1))
+    AppThemeId.Obsidian -> listOf(Color(0xFFB4A0FF), Color(0xFF0C0C13))
+    AppThemeId.MilanoRoyale -> listOf(Color(0xFFE3C579), Color(0xFF12110D))
+    AppThemeId.Pearl -> listOf(Color(0xFF5B8DEF), Color(0xFFF4F6FA))
+    AppThemeId.Ivory -> listOf(Color(0xFFA3B894), Color(0xFFF7F4EC))
+}
+
+// ------------------------------------------------------------ تنظیمات تجربه
+@Composable
+private fun ExperiencePanel(vm: AppViewModel) {
+    val scheme = MaterialTheme.colorScheme
+    val exp = vm.experience
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(6.dp))
+            Text(
+                "Interface Experience",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        ExperienceRow(
+            icon = Icons.Filled.MusicNote,
+            title = "Sound Effects",
+            subtitle = "صداهای کوتاه فقط برای رویدادهای مهم",
+            checked = exp.sound,
+        ) { vm.setExperience(exp.copy(sound = it)) }
+        ExperienceRow(
+            icon = Icons.Filled.GraphicEq,
+            title = "Motion Effects",
+            subtitle = "انیمیشن‌های نرم نمودارها و کارت‌ها",
+            checked = exp.motion,
+        ) { vm.setExperience(exp.copy(motion = it)) }
+        ExperienceRow(
+            icon = Icons.Filled.Palette,
+            title = "Ambient Effects",
+            subtitle = "نور محیطی بسیار محو پس‌زمینه",
+            checked = exp.ambient,
+        ) { vm.setExperience(exp.copy(ambient = it)) }
+    }
+}
+
+@Composable
+private fun ExperienceRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = scheme.primary),
+        )
+    }
 }
 
 // ------------------------------------------------------------ برندینگ
-/** پلاک لوکس طراح — کارت با حاشیه طلایی، مونوگرام، نام گرادیانی و نشان استودیو */
 @OptIn(ExperimentalTextApi::class)
 @Composable
 private fun DesignerFooter() {
@@ -391,107 +439,68 @@ private fun DesignerFooter() {
         animationSpec = infiniteRepeatable(tween(2600), RepeatMode.Reverse),
         label = "footerShine",
     )
-
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-            border = BorderStroke(1.dp, extras.gold.copy(alpha = 0.55f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            modifier = Modifier.fillMaxWidth(),
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .border(
+                    width = 2.dp,
+                    color = extras.gold.copy(alpha = 0.4f + 0.3f * shine),
+                    shape = CircleShape,
+                )
+                .padding(3.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(extras.goldGradient)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                scheme.surface.copy(alpha = 0.0f),
-                                scheme.surface.copy(alpha = 0.85f),
-                                scheme.surface.copy(alpha = 0.0f),
-                            )
-                        )
-                    )
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // مونوگرام
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .border(
-                                width = 2.dp,
-                                color = extras.gold.copy(alpha = 0.4f + 0.3f * shine),
-                                shape = CircleShape,
-                            )
-                            .padding(3.dp)
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(extras.goldGradient)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "MY",
-                            color = extras.goldOn,
-                            fontWeight = FontWeight.Black,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "طراحی و توسعه اپلیکیشن",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onPrimary.copy(alpha = 0.65f),
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        "Milad Yaghoobi",
-                        style = TextStyle(
-                            brush = Brush.linearGradient(extras.goldGradient),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.5.sp,
-                        ),
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    // جداکننده تزئینی
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier
-                                .width(42.dp)
-                                .height(1.dp)
-                                .background(Brush.horizontalGradient(listOf(Color.Transparent, extras.gold.copy(alpha = 0.8f))))
-                        )
-                        Text(
-                            "✦",
-                            color = extras.gold,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                        )
-                        Box(
-                            Modifier
-                                .width(42.dp)
-                                .height(1.dp)
-                                .background(Brush.horizontalGradient(listOf(extras.gold.copy(alpha = 0.8f), Color.Transparent)))
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "M E E L A N O   S T U D I O   D E S I G N",
-                        style = TextStyle(
-                            brush = Brush.linearGradient(extras.goldGradient),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 3.sp,
-                        ),
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "نسخه ${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onPrimary.copy(alpha = 0.5f),
-                    )
-                }
-            }
+            Text(
+                "MY",
+                color = extras.goldOn,
+                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.titleMedium,
+            )
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Milad Yaghoobi",
+            style = TextStyle(
+                brush = Brush.linearGradient(extras.goldGradient),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp,
+            ),
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .width(42.dp)
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, extras.gold.copy(alpha = 0.8f))))
+            )
+            Text("✦", color = extras.gold, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
+            Box(
+                Modifier
+                    .width(42.dp)
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(extras.gold.copy(alpha = 0.8f), Color.Transparent)))
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "M E E L A N O   S T U D I O   D E S I G N",
+            style = TextStyle(
+                brush = Brush.linearGradient(extras.goldGradient),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 3.sp,
+            ),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "نسخه ${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME} • M•REPORT",
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.onPrimary.copy(alpha = 0.5f),
+        )
     }
 }

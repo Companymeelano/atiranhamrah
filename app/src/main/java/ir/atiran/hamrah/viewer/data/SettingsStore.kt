@@ -11,7 +11,14 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "atiran_db_settings")
 
-/** ذخیره‌سازی تنظیمات اتصال (DataStore) */
+/** تنظیمات «Interface Experience» — قابل خاموش‌کردن توسط کاربر */
+data class Experience(
+    val sound: Boolean = true,
+    val motion: Boolean = true,
+    val ambient: Boolean = true,
+)
+
+/** ذخیره‌سازی تنظیمات اتصال و تجربه (DataStore) */
 class SettingsStore(private val context: Context) {
 
     private object Keys {
@@ -22,6 +29,9 @@ class SettingsStore(private val context: Context) {
         val password = stringPreferencesKey("password")
         val remember = booleanPreferencesKey("remember")
         val themeId = intPreferencesKey("themeId")
+        val sound = booleanPreferencesKey("sound")
+        val motion = booleanPreferencesKey("motion")
+        val ambient = booleanPreferencesKey("ambient")
     }
 
     /** تم انتخابی کاربر (۰ تا ۳) */
@@ -29,8 +39,24 @@ class SettingsStore(private val context: Context) {
         (p[Keys.themeId] ?: 0).coerceIn(0, 3)
     }
 
+    val experience: Flow<Experience> = context.dataStore.data.map { p ->
+        Experience(
+            sound = p[Keys.sound] ?: true,
+            motion = p[Keys.motion] ?: true,
+            ambient = p[Keys.ambient] ?: true,
+        )
+    }
+
     suspend fun setTheme(id: Int) {
         context.dataStore.edit { it[Keys.themeId] = id.coerceIn(0, 3) }
+    }
+
+    suspend fun setExperience(e: Experience) {
+        context.dataStore.edit {
+            it[Keys.sound] = e.sound
+            it[Keys.motion] = e.motion
+            it[Keys.ambient] = e.ambient
+        }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->

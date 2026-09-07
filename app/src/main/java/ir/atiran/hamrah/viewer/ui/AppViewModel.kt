@@ -8,9 +8,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ir.atiran.hamrah.viewer.data.DbSettings
+import ir.atiran.hamrah.viewer.data.Experience
 import ir.atiran.hamrah.viewer.data.SettingsStore
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.data.TableInfo
+import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -45,10 +47,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var themeId by mutableIntStateOf(0)
         private set
 
+    /** تنظیمات Interface Experience */
+    var experience by mutableStateOf(Experience())
+        private set
+
     init {
-        // اعمال تم ذخیره‌شده به‌صورت زنده
+        SoundFx.init(application)
+
         viewModelScope.launch {
             store.themeId.collect { themeId = it }
+        }
+        viewModelScope.launch {
+            store.experience.collect {
+                experience = it
+                SoundFx.enabled = it.sound
+            }
         }
 
         // اتصال خودکار اگر رمز ذخیره‌شده داریم؛ در غیر این صورت صفحه ورود
@@ -75,13 +88,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { store.setTheme(id) }
     }
 
+    /** تغییر تنظیمات تجربه */
+    fun setExperience(e: Experience) {
+        experience = e
+        SoundFx.enabled = e.sound
+        viewModelScope.launch { store.setExperience(e) }
+    }
+
     /**
      * ورود / تغییر اتصال — اعتبارنامه‌ها با بازکردن اتصال واقعی بررسی می‌شوند.
-     * رمز فقط در صورت فعال‌بودن «مرا به خاطر بسپار» ذخیره می‌شود.
      */
     suspend fun login(cfg: DbSettings) {
         val candidate = SqlServerDb(cfg)
-        candidate.test() // در صورت خطا exception پرتاب می‌شود
+        candidate.test()
         store.save(cfg.copy(password = if (cfg.remember) cfg.password else ""))
         db = candidate
         screen = Screen.Tables
@@ -95,12 +114,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         screen = Screen.Tables
     }
 
-    /** رفتن به صفحه ورود برای تغییر تنظیمات اتصال */
     fun goLogin() {
         screen = Screen.Login
     }
 
-    /** نمایش حالت دمو (نمونه امکانات برنامه) */
     fun openDemo() {
         screen = Screen.Demo
     }
@@ -109,7 +126,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         screen = if (db != null) Screen.Tables else Screen.Login
     }
 
-    /** خروج — رمز ذخیره‌شده پاک می‌شود */
     fun logout() {
         viewModelScope.launch {
             store.clearPassword()

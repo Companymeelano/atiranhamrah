@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ir.atiran.hamrah.viewer.R
 import ir.atiran.hamrah.viewer.ui.screens.DemoScreen
 import ir.atiran.hamrah.viewer.ui.screens.LoginScreen
@@ -54,12 +55,26 @@ private fun BootScreen() {
             Image(
                 painter = painterResource(R.drawable.app_logo),
                 contentDescription = null,
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(88.dp),
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                "M•REPORT",
+                color = scheme.onPrimary,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                letterSpacing = 3.sp,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Intelligent Reporting Experience",
+                color = scheme.onPrimary.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelMedium,
+                letterSpacing = 3.sp,
+            )
+            Spacer(modifier = Modifier.height(18.dp))
             CircularProgressIndicator(color = scheme.onPrimary, strokeWidth = 3.dp)
             Spacer(modifier = Modifier.height(12.dp))
-            Text("در حال اتصال به سرور...", color = scheme.onPrimary)
+            Text("در حال اتصال به سرور...", color = scheme.onPrimary.copy(alpha = 0.8f))
         }
     }
 }
