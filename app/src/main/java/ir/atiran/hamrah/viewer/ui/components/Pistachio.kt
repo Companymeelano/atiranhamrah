@@ -101,7 +101,7 @@ fun Pistachio(
             },
     ) {
         Canvas(Modifier.size(size)) {
-            val u = size.minDimension / 100f
+            val u = this.size.minDimension / 100f
             fun x(v: Float) = v * u
             fun y(v: Float) = v * u
 
