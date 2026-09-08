@@ -52,7 +52,7 @@
                     <item android:offset="1.0" android:color="#FF46280F" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeWidth">1.6</aapt:attr>
+            android:strokeWidth="1.6"
         </path>
 
         <!-- نور نقطه‌ای بالا-چپ — حس سه‌بعدی براق -->
@@ -74,8 +74,8 @@
                     <item android:offset="1.0" android:color="#FF9A5526" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeColor">#7A4A20</aapt:attr>
-            <aapt:attr name="android:strokeWidth">1.1</aapt:attr>
+            android:strokeColor="#7A4A20"
+            android:strokeWidth="1.1"
         </path>
 
         <!-- دمگل کوچک بالای کلاهک -->
