@@ -377,7 +377,16 @@ fun NumberHero(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
     fontSize: TextUnit = 33.sp,
+    /** جاگذاری هوشمند: عدد بلندتر → اندازه کوچک‌تر، همیشه تک‌خط و داخل کارت */
+    autoFit: Boolean = false,
 ) {
+    val fs = if (autoFit) {
+        when {
+            value.length <= 3 -> fontSize
+            value.length == 4 -> fontSize * 0.82f
+            else -> fontSize * 0.66f
+        }
+    } else fontSize
     Column(modifier) {
         if (unit != null) {
             Text(
@@ -390,8 +399,9 @@ fun NumberHero(
         Text(
             value,
             color = color,
-            fontSize = fontSize,
+            fontSize = fs,
             fontWeight = FontWeight.Black,
+            maxLines = 1,
             style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
         )
     }

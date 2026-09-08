@@ -86,6 +86,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
@@ -339,27 +340,51 @@ private fun MrTabBar(
     ) {
         tabs.forEachIndexed { i, label ->
             val sel = selected == i
+            val c = scheme.primary
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(if (sel) scheme.primary.copy(alpha = 0.13f) else Color.Transparent)
+                    .background(
+                        if (sel) Brush.verticalGradient(listOf(c.copy(alpha = 0.16f), c.copy(alpha = 0.05f)))
+                        else SolidColor(Color.Transparent)
+                    )
                     .border(
                         1.dp,
-                        if (sel) scheme.primary.copy(alpha = 0.45f) else Color.Transparent,
+                        if (sel) c.copy(alpha = 0.45f) else Color.Transparent,
                         RoundedCornerShape(14.dp),
                     )
                     .clickable { onSelect(i) }
-                    .padding(vertical = 7.dp),
+                    .padding(vertical = 6.dp),
             ) {
-                Icon(
-                    icons[i],
-                    contentDescription = label,
-                    tint = if (sel) scheme.primary else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(19.dp),
-                )
+                // نشان سه‌بعدی: گوی شیشه‌ای با نور از بالا و سایه رنگی — هم‌زبان با GlassAction
+                Box(
+                    Modifier
+                        .then(
+                            if (sel) Modifier.shadow(
+                                5.dp, CircleShape,
+                                ambientColor = c.copy(alpha = 0.30f),
+                                spotColor = c.copy(alpha = 0.55f),
+                            ) else Modifier
+                        )
+                        .size(31.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (sel) Brush.verticalGradient(listOf(c.copy(alpha = 0.32f), c.copy(alpha = 0.10f)))
+                            else SolidColor(scheme.surfaceVariant.copy(alpha = 0.30f))
+                        )
+                        .border(1.dp, if (sel) c.copy(alpha = 0.55f) else Color.Transparent, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        icons[i],
+                        contentDescription = label,
+                        tint = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     label,
@@ -889,24 +914,41 @@ private fun HeroCard(
     val extras = LocalThemeExtras.current
     Box(modifier) {
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                // سربرگ: نشان سه‌بعدی متالیک + عنوان
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .shadow(
+                                4.dp, CircleShape,
+                                ambientColor = scheme.primary.copy(alpha = 0.30f),
+                                spotColor = scheme.primary.copy(alpha = 0.50f),
+                            )
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Brush.verticalGradient(extras.goldGradient))
+                            .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(h.icon, contentDescription = null, tint = extras.goldOn, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Text(h.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+                // عدد قهرمان — جاگذاری هوشمند، همیشه داخل کارت
+                NumberHero(h.value, h.unit, color = scheme.primary, autoFit = true)
+                Text(h.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, maxLines = 1)
+                // پنجره داده: چارت در چاهِ نورانی — هم‌عرض و هم‌مرکز کارت
                 Box(
                     Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(extras.goldGradient)),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(scheme.surfaceVariant.copy(alpha = 0.28f))
+                        .padding(horizontal = 8.dp, vertical = 5.dp),
                 ) {
-                    Icon(h.icon, contentDescription = null, tint = extras.goldOn, modifier = Modifier.size(17.dp))
+                    MicroArea(h.spark.map { it.toFloat() }, scheme.primary)
                 }
-                Spacer(Modifier.width(8.dp))
-                Text(h.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             }
-            NumberHero(h.value, h.unit, color = scheme.primary)
-            Text(h.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            MicroArea(h.spark.map { it.toFloat() }, scheme.primary)
-        }
         }
         if (showHandles) {
             Row(
@@ -937,11 +979,15 @@ private fun HandleButton(icon: ImageVector, onClick: () -> Unit) {
 
 @Composable
 private fun MicroArea(values: List<Float>, color: Color) {
-    Canvas(Modifier.fillMaxWidth().height(30.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(32.dp)) {
+        // نرمال‌سازی min→max: هر چارت در نوار میانی متقارن ۱۸٪..۸۲٪ — قرینه و مرکز کارت
+        val minV = values.min()
         val maxV = values.max()
+        fun norm(v: Float): Float =
+            if (maxV - minV < 0.0001f) 0.5f else (v - minV) / (maxV - minV)
         val step = size.width / (values.size - 1)
         val pts = values.mapIndexed { i, v ->
-            Offset(i * step, size.height - (v / maxV) * size.height * 0.85f)
+            Offset(i * step, size.height * (0.82f - 0.64f * norm(v)))
         }
         val fill = Path().apply {
             moveTo(pts.first().x, size.height)

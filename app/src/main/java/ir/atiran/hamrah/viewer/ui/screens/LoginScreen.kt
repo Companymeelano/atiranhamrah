@@ -1,10 +1,16 @@
 package ir.atiran.hamrah.viewer.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,6 +53,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +75,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import ir.atiran.hamrah.viewer.data.DbSettings
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.ui.AppViewModel
@@ -119,7 +127,7 @@ fun LoginScreen(vm: AppViewModel) {
                 TopIconButton(Icons.Filled.GraphicEq, "تجربه رابط") { soundSheet = true; SoundFx.soft() }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(26.dp))
 
             // ---------- پوستر M•REPORT ----------
             Text(
@@ -131,17 +139,17 @@ fun LoginScreen(vm: AppViewModel) {
                     letterSpacing = 3.sp,
                 ),
             )
-            Spacer(Modifier.height(5.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 "Intelligent Reporting Experience",
                 style = MaterialTheme.typography.labelLarge,
                 letterSpacing = 4.sp,
                 color = scheme.onBackground.copy(alpha = 0.72f),
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
             LightLine(width = 210.dp)
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(28.dp))
 
             // ---------- کارت ورود (فقط ضروری‌ها) ----------
             Card(
@@ -299,11 +307,84 @@ fun LoginScreen(vm: AppViewModel) {
         }
     }
 
+    if (busy) {
+        MrLoadingOverlay()
+    }
     if (themeSheet) {
         ThemeSheet(vm) { themeSheet = false }
     }
     if (soundSheet) {
         ExperienceSheet(vm) { soundSheet = false }
+    }
+}
+
+// ------------------------------------------------------------ لودینگ اختصاصی M•REPORT
+/**
+ * تجربه ورود: M• گرادیانی + خط نور متحرک + توضیح کوتاه + صدای نرم —
+ * هماهنگ با تم انتخابی، سپس ورود به برنامه.
+ */
+@Composable
+private fun MrLoadingOverlay() {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    LaunchedEffect(Unit) { SoundFx.soft() }
+    val tr = rememberInfiniteTransition(label = "mrLoading")
+    val sweep = tr.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse),
+        label = "sweep",
+    ).value
+    Dialog(onDismissRequest = {}, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(extras.loginGradient)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "M•",
+                    style = TextStyle(
+                        brush = Brush.horizontalGradient(extras.brand),
+                        fontSize = 64.sp,
+                        fontWeight = FontWeight.Black,
+                    ),
+                )
+                Spacer(Modifier.height(16.dp))
+                // خط نور که آرام رفت‌وآمد می‌کند
+                Box(
+                    Modifier
+                        .width(170.dp)
+                        .height(2.dp)
+                        .background(extras.hairline),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .absoluteOffset(x = (sweep * 55).dp)
+                            .width(60.dp)
+                            .height(2.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        extras.brand[1],
+                                        extras.brand.last(),
+                                        Color.Transparent,
+                                    )
+                                )
+                            ),
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "در حال اتصال به سرویس آتیران...",
+                    style = MaterialTheme.typography.labelLarge,
+                    letterSpacing = 1.sp,
+                    color = scheme.onBackground.copy(alpha = 0.75f),
+                )
+            }
+        }
     }
 }
 
