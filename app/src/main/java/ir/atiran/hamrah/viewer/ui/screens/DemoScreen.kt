@@ -111,6 +111,7 @@ import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
+import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
@@ -332,34 +333,35 @@ private fun MrTabBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(extras.glass)
-            .border(1.dp, extras.hairline, RoundedCornerShape(20.dp))
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+            .clip(RoundedCornerShape(18.dp))
+            .background(scheme.surfaceVariant.copy(alpha = 0.22f))
+            .border(1.dp, extras.hairline, RoundedCornerShape(18.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         tabs.forEachIndexed { i, label ->
             val sel = selected == i
             val c = scheme.primary
+            // سلول با ارتفاع ثابت — فشردن دکمه هرگز چیدمان را تکان نمی‌دهد
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .weight(1f)
+                    .height(64.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(
-                        if (sel) Brush.verticalGradient(listOf(c.copy(alpha = 0.16f), c.copy(alpha = 0.05f)))
+                        if (sel) Brush.verticalGradient(listOf(c.copy(alpha = 0.15f), c.copy(alpha = 0.04f)))
                         else SolidColor(Color.Transparent)
                     )
                     .border(
                         1.dp,
-                        if (sel) c.copy(alpha = 0.45f) else Color.Transparent,
+                        if (sel) c.copy(alpha = 0.42f) else Color.Transparent,
                         RoundedCornerShape(14.dp),
                     )
-                    .clickable { onSelect(i) }
-                    .padding(vertical = 6.dp),
+                    .clickable { onSelect(i) },
             ) {
-                // نشان سه‌بعدی: گوی شیشه‌ای با نور از بالا و سایه رنگی — هم‌زبان با GlassAction
+                Spacer(Modifier.height(7.dp))
+                // گوی شیشه‌ای سه‌بعدی — ثابت‌اندازه، فقط جلوه‌اش عوض می‌شود
                 Box(
                     Modifier
                         .then(
@@ -369,10 +371,10 @@ private fun MrTabBar(
                                 spotColor = c.copy(alpha = 0.55f),
                             ) else Modifier
                         )
-                        .size(31.dp)
+                        .size(28.dp)
                         .clip(CircleShape)
                         .background(
-                            if (sel) Brush.verticalGradient(listOf(c.copy(alpha = 0.32f), c.copy(alpha = 0.10f)))
+                            if (sel) Brush.verticalGradient(listOf(c.copy(alpha = 0.34f), c.copy(alpha = 0.10f)))
                             else SolidColor(scheme.surfaceVariant.copy(alpha = 0.30f))
                         )
                         .border(1.dp, if (sel) c.copy(alpha = 0.55f) else Color.Transparent, CircleShape),
@@ -382,10 +384,10 @@ private fun MrTabBar(
                         icons[i],
                         contentDescription = label,
                         tint = if (sel) scheme.primary else scheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(15.dp),
                     )
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(5.dp))
                 Text(
                     label,
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
@@ -393,14 +395,18 @@ private fun MrTabBar(
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(3.dp))
-                // نقطه امضای برند زیر بخش فعال
+                // جای نقطه همیشه رزرو شده — هیچ جهشی در ارتفاع رخ نمی‌دهد
                 Box(
-                    Modifier
-                        .size(if (sel) 3.5.dp else 0.dp)
-                        .clip(CircleShape)
-                        .background(scheme.primary)
-                )
+                    Modifier.height(6.dp).fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        Modifier
+                            .size(3.5.dp)
+                            .clip(CircleShape)
+                            .background(if (sel) c else Color.Transparent)
+                    )
+                }
             }
         }
     }
@@ -741,12 +747,7 @@ private fun MReportTitle(vm: AppViewModel) {
             ),
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            "Intelligent Reporting Experience",
-            style = MaterialTheme.typography.labelLarge,
-            letterSpacing = 3.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        MrSubtitle("Intelligent Reporting Experience")
         Spacer(Modifier.height(10.dp))
         LightLine(width = 200.dp)
     }
@@ -936,7 +937,7 @@ private fun HeroCard(
                     Text(h.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
                 // عدد قهرمان — جاگذاری هوشمند، همیشه داخل کارت
-                NumberHero(h.value, h.unit, color = scheme.primary, autoFit = true)
+                NumberHero(h.value, h.unit, color = scheme.primary, autoFit = true, fixedHeight = 36.dp)
                 Text(h.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, maxLines = 1)
                 // پنجره داده: چارت در چاهِ نورانی — هم‌عرض و هم‌مرکز کارت
                 Box(

@@ -82,6 +82,7 @@ import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
 import ir.atiran.hamrah.viewer.ui.components.LightLine
+import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
@@ -140,12 +141,7 @@ fun LoginScreen(vm: AppViewModel) {
                 ),
             )
             Spacer(Modifier.height(6.dp))
-            Text(
-                "Intelligent Reporting Experience",
-                style = MaterialTheme.typography.labelLarge,
-                letterSpacing = 4.sp,
-                color = scheme.onBackground.copy(alpha = 0.72f),
-            )
+            MrSubtitle("Intelligent Reporting Experience")
             Spacer(Modifier.height(14.dp))
             LightLine(width = 210.dp)
 

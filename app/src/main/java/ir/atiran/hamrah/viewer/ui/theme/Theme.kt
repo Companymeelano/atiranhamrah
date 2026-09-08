@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
@@ -330,7 +332,11 @@ private fun extrasFor(id: AppThemeId) = when (id) {
 @Composable
 fun AtiranAppTheme(themeId: AppThemeId, content: @Composable () -> Unit) {
     val scheme = schemeFor(themeId)
-    CompositionLocalProvider(LocalThemeExtras provides extrasFor(themeId)) {
+    CompositionLocalProvider(
+        LocalThemeExtras provides extrasFor(themeId),
+        // برنامه فارسی است: متن‌ها و آیکن‌ها در جایگاه راست‌به‌چپ خودشان می‌نشینند
+        LocalLayoutDirection provides LayoutDirection.Rtl,
+    ) {
         MaterialTheme(
             colorScheme = scheme,
             typography = AppTypography,

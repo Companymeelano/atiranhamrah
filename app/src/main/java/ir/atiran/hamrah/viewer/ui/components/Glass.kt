@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -379,6 +381,8 @@ fun NumberHero(
     fontSize: TextUnit = 33.sp,
     /** جاگذاری هوشمند: عدد بلندتر → اندازه کوچک‌تر، همیشه تک‌خط و داخل کارت */
     autoFit: Boolean = false,
+    /** ارتفاع ثابت جای عدد — کارت‌ها همیشه هم‌اندازه می‌مانند */
+    fixedHeight: Dp? = null,
 ) {
     val fs = if (autoFit) {
         when {
@@ -396,14 +400,58 @@ fun NumberHero(
             )
             Spacer(Modifier.height(2.dp))
         }
+        if (fixedHeight != null) {
+            Box(
+                Modifier.height(fixedHeight).fillMaxWidth(),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    value,
+                    color = color,
+                    fontSize = fs,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
+                )
+            }
+        } else {
+            Text(
+                value,
+                color = color,
+                fontSize = fs,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
+            )
+        }
+    }
+}
+
+// ============================================================ زیرنویس امضای برند
+/**
+ * زیرنویس لاتین M•REPORT — متن گرادیانیِ هم‌رنگ تم با جداکننده‌های ✦ طلایی؛
+ * در هر ۴ شخصیت بصری خودش را با رنگ‌های همان تم هماهنگ می‌کند.
+ */
+@OptIn(ExperimentalTextApi::class)
+@Composable
+fun MrSubtitle(text: String, modifier: Modifier = Modifier) {
+    val extras = LocalThemeExtras.current
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Text("✦", color = extras.gold.copy(alpha = 0.80f), fontSize = 9.sp)
         Text(
-            value,
-            color = color,
-            fontSize = fs,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
+            text,
+            style = TextStyle(
+                brush = Brush.horizontalGradient(extras.brand),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 3.5.sp,
+            ),
         )
+        Text("✦", color = extras.gold.copy(alpha = 0.80f), fontSize = 9.sp)
     }
 }
 
