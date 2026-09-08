@@ -41,23 +41,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Paid
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
@@ -1739,18 +1730,18 @@ private fun ReportsTab() {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                GlassAction(Icons.Filled.PictureAsPdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
-                GlassAction(Icons.Filled.TableChart, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
-                GlassAction(Icons.Filled.InsertDriveFile, "Word", Color(0xFF74C0FC)) { SoundFx.success() }
-                GlassAction(Icons.Filled.Print, "Print", scheme.primary) { SoundFx.soft() }
-                GlassAction(Icons.Filled.Share, "Share", extras.accent) { SoundFx.soft() }
+                GlassAction(MrIcons.Pdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
+                GlassAction(MrIcons.Excel, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
+                GlassAction(MrIcons.Word, "Word", Color(0xFF74C0FC)) { SoundFx.success() }
+                GlassAction(MrIcons.Print, "Print", scheme.primary) { SoundFx.soft() }
+                GlassAction(MrIcons.Share, "Share", extras.accent) { SoundFx.soft() }
             }
             Row(
                 Modifier.fillMaxWidth().clickable { SoundFx.soft() },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.Star, contentDescription = null, tint = extras.gold, modifier = Modifier.size(15.dp))
+                Icon(MrIcons.Bookmark, contentDescription = null, tint = extras.gold, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     "ذخیره به‌عنوان الگو — «گزارش ماهانه مشتریان»",
@@ -2071,9 +2062,9 @@ private fun Product360(p: P3, onDismiss: () -> Unit) {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                GlassAction(Icons.Filled.PictureAsPdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
-                GlassAction(Icons.Filled.TableChart, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
-                GlassAction(Icons.Filled.Share, "Share", extras.accent) { SoundFx.soft() }
+                GlassAction(MrIcons.Pdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
+                GlassAction(MrIcons.Excel, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
+                GlassAction(MrIcons.Share, "Share", extras.accent) { SoundFx.soft() }
             }
         }
     }
@@ -2231,13 +2222,13 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                         ) {
-                            GlassAction(Icons.Filled.Call, "تماس", scheme.primary) { SoundFx.soft() }
-                            GlassAction(Icons.Filled.Email, "پیام", extras.accent) { SoundFx.soft() }
-                            GlassAction(Icons.Filled.Print, "چاپ", scheme.onSurfaceVariant) { SoundFx.soft() }
-                            GlassAction(Icons.Filled.PictureAsPdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
-                            GlassAction(Icons.Filled.TableChart, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
-                            GlassAction(Icons.Filled.Share, "اشتراک", extras.gold) { SoundFx.soft() }
-                            GlassAction(Icons.Filled.Alarm, "یادآور", Color(0xFFFFA94D)) { SoundFx.soft() }
+                            GlassAction(MrIcons.Call, "تماس", scheme.primary) { SoundFx.soft() }
+                            GlassAction(MrIcons.Message, "پیام", extras.accent) { SoundFx.soft() }
+                            GlassAction(MrIcons.Print, "چاپ", scheme.onSurfaceVariant) { SoundFx.soft() }
+                            GlassAction(MrIcons.Pdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
+                            GlassAction(MrIcons.Excel, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
+                            GlassAction(MrIcons.Share, "اشتراک", extras.gold) { SoundFx.soft() }
+                            GlassAction(MrIcons.Reminder, "یادآور", Color(0xFFFFA94D)) { SoundFx.soft() }
                         }
                     }
                     Spacer(Modifier.height(24.dp))

@@ -1,6 +1,12 @@
 package ir.atiran.hamrah.viewer.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -23,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -43,8 +49,35 @@ import java.util.Locale
 /** Simple loading box. */
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    // Skeleton Loader — شیمر آرام به‌جای اسپینر؛ هم‌زبان با تم
+    val scheme = MaterialTheme.colorScheme
+    val tr = rememberInfiniteTransition(label = "skeleton")
+    val alpha by tr.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.72f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
+        label = "skeletonAlpha",
+    )
+    Column(
+        modifier = modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // ردیف سرصفحه
+        Box(
+            Modifier
+                .fillMaxWidth(0.55f)
+                .height(18.dp)
+                .background(scheme.surfaceVariant.copy(alpha = alpha), RoundedCornerShape(6.dp))
+        )
+        // ردیف‌های داده با طول‌های متفاوت — ریتم واقعی جدول
+        listOf(1f, 0.86f, 0.93f, 0.7f, 0.97f, 0.62f).forEach { w ->
+            Box(
+                Modifier
+                    .fillMaxWidth(w)
+                    .height(14.dp)
+                    .background(scheme.surfaceVariant.copy(alpha = alpha * 0.85f), RoundedCornerShape(5.dp))
+            )
+        }
     }
 }
 

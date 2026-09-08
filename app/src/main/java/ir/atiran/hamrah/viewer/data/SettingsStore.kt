@@ -38,7 +38,7 @@ class SettingsStore(private val context: Context) {
 
     /** تم انتخابی کاربر (۰ تا ۳) */
     val themeId: Flow<Int> = context.dataStore.data.map { p ->
-        (p[Keys.themeId] ?: 0).coerceIn(0, 3)
+        (p[Keys.themeId] ?: 0).coerceIn(0, 4)
     }
 
     val experience: Flow<Experience> = context.dataStore.data.map { p ->
@@ -50,7 +50,7 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun setTheme(id: Int) {
-        context.dataStore.edit { it[Keys.themeId] = id.coerceIn(0, 3) }
+        context.dataStore.edit { it[Keys.themeId] = id.coerceIn(0, 4) }
     }
 
     suspend fun setExperience(e: Experience) {

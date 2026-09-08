@@ -454,6 +454,7 @@ private fun themeSwatch(t: AppThemeId): List<Color> = when (t) {
     AppThemeId.MilanoRoyale -> listOf(Color(0xFFE3C579), Color(0xFF12110D))
     AppThemeId.Pearl -> listOf(Color(0xFF5B8DEF), Color(0xFFF4F6FA))
     AppThemeId.Ivory -> listOf(Color(0xFFA3B894), Color(0xFFF7F4EC))
+    AppThemeId.Emerald -> listOf(Color(0xFF34D399), Color(0xFF0F172A))
 }
 
 // ------------------------------------------------------------ شیت تجربه رابط

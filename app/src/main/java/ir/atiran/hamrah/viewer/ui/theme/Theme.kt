@@ -315,11 +315,63 @@ private val IvoryExtras = ThemeExtras(
     glow = Color(0xFF9BB08A),
 )
 
+// ---------------------------------------- تم ۵: زمرد (Emerald — رشد و پایداری)
+private val EmeraldScheme = darkColorScheme(
+    primary = Color(0xFF34D399),
+    onPrimary = Color(0xFF022C22),
+    primaryContainer = Color(0xFF065F46),
+    onPrimaryContainer = Color(0xFFD1FAE5),
+    secondary = Color(0xFF60A5FA),
+    onSecondary = Color(0xFF102A56),
+    secondaryContainer = Color(0xFF1E40AF),
+    onSecondaryContainer = Color(0xFFDBEAFE),
+    tertiary = Color(0xFFFBBF24),
+    onTertiary = Color(0xFF451A03),
+    tertiaryContainer = Color(0xFFB45309),
+    onTertiaryContainer = Color(0xFFFEF3C7),
+    background = Color(0xFF0F172A),
+    onBackground = Color(0xFFE2E8F0),
+    surface = Color(0xFF1E293B),
+    onSurface = Color(0xFFE2E8F0),
+    surfaceVariant = Color(0xFF334155),
+    onSurfaceVariant = Color(0xFFA8B3C8),
+    outline = Color(0xFF64748B),
+    outlineVariant = Color(0xFF475569),
+    error = Color(0xFFF87171),
+    onError = Color(0xFF450A0A),
+    errorContainer = Color(0xFF7F1D1D),
+    onErrorContainer = Color(0xFFFEE2E2),
+    surfaceDim = Color(0xFF111A2E),
+    surfaceBright = Color(0xFF3E4C63),
+    surfaceContainer = Color(0xFF283548),
+    surfaceContainerHigh = Color(0xFF2E3B50),
+    surfaceContainerHighest = Color(0xFF364358),
+)
+
+private val EmeraldExtras = ThemeExtras(
+    chart = listOf(Color(0xFF34D399), Color(0xFF60A5FA), Color(0xFFFBBF24), Color(0xFFF87171), Color(0xFFA78BFA)),
+    gold = Color(0xFF34D399),
+    positive = Color(0xFF34D399),
+    goldGradient = listOf(Color(0xFF6EE7B7), Color(0xFF34D399), Color(0xFF059669)),
+    loginGradient = listOf(Color(0xFF16213D), Color(0xFF0D1526), Color(0xFF0F172A)),
+    swatch = listOf(Color(0xFF34D399), Color(0xFF0F172A)),
+    goldOn = Color(0xFF022C22),
+    metallic = listOf(Color(0xFF6EE7B7), Color(0xFF34D399), Color(0xFF10B981)),
+    accent = Color(0xFF60A5FA),
+    glass = Color(0x0FFFFFFF),
+    glassStrong = Color(0x17FFFFFF),
+    hairline = Color(0x1AFFFFFF),
+    ambient = listOf(Color(0xFF10B981), Color(0xFF3B82F6), Color(0xFF059669)),
+    brand = listOf(Color(0xFF6EE7B7), Color(0xFF34D399), Color(0xFF3B82F6)),
+    glow = Color(0xFF10B981),
+)
+
 private fun schemeFor(id: AppThemeId) = when (id) {
     AppThemeId.Obsidian -> ObsidianScheme
     AppThemeId.MilanoRoyale -> MilanoRoyaleScheme
     AppThemeId.Pearl -> PearlScheme
     AppThemeId.Ivory -> IvoryScheme
+    AppThemeId.Emerald -> EmeraldScheme
 }
 
 private fun extrasFor(id: AppThemeId) = when (id) {
@@ -327,6 +379,7 @@ private fun extrasFor(id: AppThemeId) = when (id) {
     AppThemeId.MilanoRoyale -> MilanoExtras
     AppThemeId.Pearl -> PearlExtras
     AppThemeId.Ivory -> IvoryExtras
+    AppThemeId.Emerald -> EmeraldExtras
 }
 
 @Composable
