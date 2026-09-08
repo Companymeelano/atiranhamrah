@@ -23,6 +23,8 @@ data class DiagStep(
     val title: String,
     val detail: String,
     val hint: String? = null,
+    /** اگر پورت واقعی سرور کشف شد، اینجا می‌آید تا کاربر با یک لمس اعمالش کند */
+    val suggestedPort: Int? = null,
 )
 
 class SqlServerDb(private val cfg: DbSettings) {
@@ -79,16 +81,18 @@ class SqlServerDb(private val cfg: DbSettings) {
     @Volatile
     private var tlsWorked: Boolean? = null
 
-    private fun url(encrypt: Boolean): String {
+    private fun url(encrypt: Boolean, timeoutSec: Int = 20, portOverride: Int? = null): String {
         val sb = StringBuilder("jdbc:sqlserver://").append(serverHost)
         // با نمونه (instance)، پورت نمی‌گذاریم تا درایور از SQL Browser پورت واقعی را بپرسد
         if (instanceName == null) {
-            sb.append(":").append(cfg.port.trim().ifBlank { "1433" })
+            val port = portOverride ?: cfg.port.trim().ifBlank { "1433" }.toIntOrNull() ?: 1433
+            sb.append(":").append(port)
         }
         sb.append(";databaseName=").append(cfg.database.trim())
         sb.append(";encrypt=").append(if (encrypt) "true" else "false")
         if (encrypt) sb.append(";trustServerCertificate=true")
-        sb.append(";loginTimeout=20;connectRetryCount=2;connectRetryDelay=1")
+        sb.append(";loginTimeout=").append(timeoutSec)
+        sb.append(";connectRetryCount=1;connectRetryDelay=1")
         sb.append(";applicationName=AtiranHamrahViewer")
         if (instanceName != null) sb.append(";instanceName=").append(instanceName)
         return sb.toString()
@@ -104,9 +108,100 @@ class SqlServerDb(private val cfg: DbSettings) {
             m.contains("Connection reset", true)
     }
 
+    /** آیا خطا از جنس تایم‌اوت/بی‌پاسخی است؟ */
+    private fun isTimeout(e: Throwable): Boolean {
+        val m = (e.message ?: "") + " " + e.toString()
+        return m.contains("timed out", true) || m.contains("Timeout", true) ||
+            m.contains("did not return a response", true)
+    }
+
     private fun props(): Properties = Properties().apply {
         setProperty("user", cfg.user.trim())
         setProperty("password", cfg.password)
+    }
+
+    /**
+     * تست سریع اتصال روی یک پورت مشخص — اول TLS، اگر TLS/تایم‌اوت شکست خورد
+     * بدون رمزنگاری؛ خروجی null یعنی موفق، وگرنه آخرین خطا.
+     */
+    private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
+        return try {
+            DriverManager.getConnection(url(true, timeoutSec, port), props()).use { }
+            null
+        } catch (e: Throwable) {
+            if (isTlsError(e) || isTimeout(e)) {
+                try {
+                    DriverManager.getConnection(url(false, timeoutSec, port), props()).use { }
+                    null
+                } catch (e2: Throwable) {
+                    e2
+                }
+            } else {
+                e
+            }
+        }
+    }
+
+    /**
+     * سنجش واقعی سرویس TDS: بسته prelogin استاندارد می‌فرستد و منتظر پاسخ
+     * SQL Server می‌ماند — پورتِ «فقط باز» را از سرویس واقعی جدا می‌کند.
+     */
+    private fun tdsProbe(host: String, port: Int): ByteArray? {
+        return try {
+            java.net.Socket().use { s ->
+                s.tcpNoDelay = true
+                s.connect(java.net.InetSocketAddress(host, port), 6000)
+                s.soTimeout = 7000
+                val prelogin = byteArrayOf(
+                    0x12, 0x01, 0x00, 0x1A, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x0B, 0x00, 0x06,
+                    0x01, 0x00, 0x11, 0x00, 0x01,
+                    0xFF.toByte(),
+                    0x0F, 0x00, 0x07, 0xD6.toByte(), 0x00, 0x00,
+                    0x01,
+                )
+                s.getOutputStream().write(prelogin)
+                s.getOutputStream().flush()
+                val buf = ByteArray(512)
+                val n = s.getInputStream().read(buf)
+                if (n > 0) buf.copyOf(n) else null
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    /**
+     * پرس‌وجو از سرویس SQL Server Browser (UDP 1434) — فهرست نمونه‌ها و
+     * پورت‌های واقعی؛ برای وقتی نمونه روی پورت داینامیک گوش می‌دهد.
+     */
+    private fun browserQuery(host: String): List<Pair<String, Int>> {
+        val out = ArrayList<Pair<String, Int>>()
+        try {
+            java.net.DatagramSocket().use { ds ->
+                ds.soTimeout = 3500
+                val addr = java.net.InetAddress.getByName(host)
+                ds.send(java.net.DatagramPacket(byteArrayOf(0x0A), 1, addr, 1434))
+                val buf = ByteArray(4096)
+                val pkt = java.net.DatagramPacket(buf, buf.size)
+                ds.receive(pkt)
+                val text = String(buf, 0, pkt.length, charset("UTF-16LE"))
+                val toks = text.split(";")
+                var i = 0
+                while (i < toks.size - 1) {
+                    if (toks[i].trim().equals("tcp", true)) {
+                        val p = toks[i + 1].trim().toIntOrNull()
+                        if (p != null && p in 1..65535) {
+                            val inst = if (i >= 3) toks[i - 3].trim() else ""
+                            out += (inst to p)
+                        }
+                    }
+                    i++
+                }
+            }
+        } catch (_: Throwable) {
+        }
+        return out.distinctBy { it.second }
     }
 
     /**
@@ -120,7 +215,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         return try {
             DriverManager.getConnection(url(true), props()).also { tlsWorked = true }
         } catch (e: Throwable) {
-            if (isTlsError(e)) {
+            if (isTlsError(e) || isTimeout(e)) {
                 DriverManager.getConnection(url(false), props()).also { tlsWorked = false }
             } else {
                 throw e
@@ -149,14 +244,14 @@ class SqlServerDb(private val cfg: DbSettings) {
             return@withContext steps
         }
 
-        // گام ۲: درگاه TCP (فقط وقتی نمونه ندارد؛ با نمونه، درایور خودش از SQL Browser می‌پرسد)
+        // گام ۲: درگاه TCP + سنجش واقعی سرویس TDS (فقط وقتی نمونه ندارد)
         val portNum = cfg.port.trim().ifBlank { "1433" }.toIntOrNull() ?: 1433
         if (instanceName == null) {
             try {
                 java.net.Socket().use { s ->
                     s.connect(java.net.InetSocketAddress(serverHost, portNum), 6000)
                 }
-                steps += DiagStep(true, "درگاه اتصال (TCP $portNum)", "پورت باز است — سرور در حال شنیدن است")
+                steps += DiagStep(true, "درگاه اتصال (TCP $portNum)", "دست‌دادن TCP با سرور برقرار شد")
             } catch (e: Throwable) {
                 steps += DiagStep(
                     false, "درگاه اتصال (TCP $portNum)",
@@ -165,6 +260,55 @@ class SqlServerDb(private val cfg: DbSettings) {
                 )
                 return@withContext steps
             }
+
+            // گام ۳: آیا پشت این پورت واقعاً SQL Server است؟ (بسته prelogin واقعی)
+            val resp = tdsProbe(serverHost, portNum)
+            if (resp == null) {
+                steps += DiagStep(
+                    false, "سرویس SQL Server روی پورت $portNum",
+                    "اتصال TCP برقرار شد اما هیچ پاسخ TDS از سرور نرسید — پورت باز است ولی SQL Server پشت آن پاسخگو نیست",
+                    "معمولاً یعنی: پورت‌فوروارد/NAT به مقصد اشتباه می‌رود، یا دستگاه میانی (فایروال/اپراتور) فقط اتصال را می‌پذیرد و داده را رها می‌کند. اگر با اینترنت همراه هستید و داخل شبکه اداره وصل می‌شوید، اپراتور ترافیک این پورت را فیلتر می‌کند — از VPN استفاده کنید.",
+                )
+                // تلاش برای یافتن پورت واقعی از SQL Browser
+                val found = browserQuery(serverHost)
+                if (found.isNotEmpty()) {
+                    steps += DiagStep(
+                        true, "سرویس SQL Browser (UDP 1434)",
+                        "نمونه‌های روی سرور: " + found.joinToString("، ") { (name, prt) ->
+                            (if (name.isBlank()) "پیش‌فرض" else name) + " → پورت " + ir.atiran.hamrah.viewer.utils.Jalali.fa(prt.toString())
+                        },
+                    )
+                    for ((name, prt) in found.filter { it.second != portNum }.take(3)) {
+                        val err = quickConnect(prt, 10)
+                        if (err == null) {
+                            steps += DiagStep(
+                                true, "پورت واقعی سرور پیدا شد: " + ir.atiran.hamrah.viewer.utils.Jalali.fa(prt.toString()),
+                                "اتصال روی پورت " + ir.atiran.hamrah.viewer.utils.Jalali.fa(prt.toString()) + " موفق بود! (نمونه «" + (if (name.isBlank()) "پیش‌فرض" else name) + "»)",
+                                "دکمه «استفاده از این پورت» را بزنید تا خودکار در فیلد پورت تنظیم شود.",
+                                suggestedPort = prt,
+                            )
+                            steps += DiagStep(true, "نتیجه نهایی", "اتصال با پورت کشف‌شده برقرار شد")
+                            return@withContext steps
+                        }
+                    }
+                } else {
+                    steps += DiagStep(
+                        false, "سرویس SQL Browser (UDP 1434)",
+                        "پاسخی نرسید — یا سرویس Browser خاموش است یا ترافیک UDP بسته است",
+                        "از مدیر سرور بخواهید پورت واقعی SQL Server را بگوید (فایروال ویندوز → Inbound Rules روی SQL Server).",
+                    )
+                }
+                return@withContext steps
+            }
+            if (resp.isNotEmpty() && resp[0] != 0x04.toByte()) {
+                steps += DiagStep(
+                    false, "سرویس SQL Server روی پورت $portNum",
+                    "پاسخی آمد ولی پاسخ TDS معتبر نبود — روی این پورت سرویس دیگری در حال شنیدن است",
+                    "IP و پورت صحیح SQL Server را از مدیر سرور بپرسید؛ ممکن است 1433 به سرویس دیگری فوروارد شده باشد.",
+                )
+                return@withContext steps
+            }
+            steps += DiagStep(true, "سرویس SQL Server روی پورت $portNum", "پاسخ prelogin معتبر از SQL Server دریافت شد")
         } else {
             steps += DiagStep(
                 true, "نمونه نام‌بریده «" + instanceName + "»",
@@ -177,11 +321,11 @@ class SqlServerDb(private val cfg: DbSettings) {
         try {
             var tlsNote = "دست‌دادن امن با سرور موفق بود"
             try {
-                DriverManager.getConnection(url(true), props()).use { }
+                DriverManager.getConnection(url(true, 15), props()).use { }
             } catch (e: Throwable) {
-                if (isTlsError(e)) {
+                if (isTlsError(e) || isTimeout(e)) {
                     DriverManager.getConnection(url(false), props()).use { }
-                    tlsNote = "سرور رمزنگاری TLS را نپذیرفت — اتصال بدون رمزنگاری برقرار شد"
+                    tlsNote = "سرور TLS را نپذیرفت یا پاسخ نداد — اتصال بدون رمزنگاری برقرار شد"
                     steps += DiagStep(
                         true, "رمزنگاری اتصال (TLS)", tlsNote,
                         "بهتر است TLS 1.2 در سرور فعال شود؛ تا آن زمان برنامه خودش بدون رمزنگاری وصل می‌شود.",
@@ -214,10 +358,10 @@ class SqlServerDb(private val cfg: DbSettings) {
                         "نام دیتابیس یا دسترسی این کاربر به دیتابیس را بررسی کنید.",
                     )
                 }
-                m.contains("timed out", true) || m.contains("Timeout", true) -> {
+                isTimeout(e) -> {
                     steps += DiagStep(
-                        false, "مذاکره با سرور", "پاسخ سرور بیش از حد انتظار طول کشید",
-                        "شبکه یا VPN کند است / سرور بار زیادی دارد؛ دوباره تلاش کنید.",
+                        false, "مذاکره با سرور", "پاسخ سرور بیش از حد انتظار طول کشید (حتی بدون رمزنگاری)",
+                        "اگر داخل شبکه اداره وصل می‌شوید ولی با اینترنت همراه نه، اپراتور ترافیک این پورت را فیلتر می‌کند — از VPN یا شبکه اداره استفاده کنید. اگر همه‌جا همین است، سرور یا فایروال میانی جلسات طولانی را می‌بندد.",
                     )
                 }
                 else -> {

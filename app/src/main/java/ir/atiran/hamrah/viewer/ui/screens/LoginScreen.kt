@@ -415,7 +415,17 @@ fun LoginScreen(vm: AppViewModel) {
         AiSettingsSheet(vm) { aiSheet = false }
     }
     diag?.let { steps ->
-        DiagSheet(steps) { diag = null }
+        DiagSheet(
+            steps = steps,
+            onUsePort = { p ->
+                port = p.toString()
+                error = null
+                errorRaw = null
+                diag = null
+                SoundFx.success()
+            },
+            onDismiss = { diag = null },
+        )
     }
 }
 
@@ -425,9 +435,10 @@ fun LoginScreen(vm: AppViewModel) {
  * هماهنگ با تم انتخابی کاربر.
  */
 @Composable
-private fun DiagSheet(steps: List<DiagStep>, onDismiss: () -> Unit) {
+private fun DiagSheet(steps: List<DiagStep>, onUsePort: (Int) -> Unit, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
+    val suggested = steps.firstNotNullOfOrNull { it.suggestedPort }
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
@@ -519,6 +530,15 @@ private fun DiagSheet(steps: List<DiagStep>, onDismiss: () -> Unit) {
                         }
                     }
                 }
+            }
+            if (suggested != null) {
+                MrPillButton(
+                    label = "استفاده از پورت " + suggested,
+                    onClick = { onUsePort(suggested) },
+                    icon = MrIcons.Sync,
+                    tint = scheme.primary,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
             }
             MrPillButton(
                 label = "بستن",
