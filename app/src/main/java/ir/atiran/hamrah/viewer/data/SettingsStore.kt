@@ -56,6 +56,7 @@ class SettingsStore(private val context: Context) {
         val alertSeen = stringPreferencesKey("alertSeen")
         val notifDone = stringPreferencesKey("notifDone")
         val reminders = stringPreferencesKey("reminders")
+        val sectionMap = stringPreferencesKey("sectionMap")
     }
 
     /** تم انتخابی کاربر (۰ تا ۳) */
@@ -146,6 +147,13 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setReminders(v: String) {
         context.dataStore.edit { it[Keys.reminders] = v }
+    }
+
+    /** نگاشت بخش‌های M•REPORT به جداول سرور — JSON */
+    val sectionMap: Flow<String?> = context.dataStore.data.map { p -> p[Keys.sectionMap] }
+
+    suspend fun setSectionMap(v: String) {
+        context.dataStore.edit { it[Keys.sectionMap] = v }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->

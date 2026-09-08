@@ -11,9 +11,16 @@ import androidx.lifecycle.viewModelScope
 import ir.atiran.hamrah.viewer.data.AiSettings
 import ir.atiran.hamrah.viewer.data.DbSettings
 import ir.atiran.hamrah.viewer.data.Experience
+import ir.atiran.hamrah.viewer.data.Overview
+import ir.atiran.hamrah.viewer.data.RealRow
+import ir.atiran.hamrah.viewer.data.RealTable
+import ir.atiran.hamrah.viewer.data.SectionMap
 import ir.atiran.hamrah.viewer.data.SettingsStore
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.data.TableInfo
+import ir.atiran.hamrah.viewer.data.parseSectionMap
+import ir.atiran.hamrah.viewer.data.serializeSectionMap
+import ir.atiran.hamrah.viewer.data.splitRef
 import ir.atiran.hamrah.viewer.ui.components.MotionFx
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.flow.SharingStarted
@@ -110,6 +117,75 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val heroOrder = store.heroOrder
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** فهرست جداول سرور (بعد از ورود) — برای نگاشت بخش‌ها */
+    var dbOverview by mutableStateOf<Overview?>(null)
+        private set
+
+    /** نگاشت بخش‌های M•REPORT به جداول واقعی سرور */
+    val sectionMap = store.sectionMap
+        .map { parseSectionMap(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SectionMap())
+
+    fun updateSection(section: String, ref: String?) {
+        viewModelScope.launch {
+            store.setSectionMap(serializeSectionMap(sectionMap.value.withSection(section, ref)))
+        }
+    }
+
+    fun setSectionMap(m: SectionMap) {
+        viewModelScope.launch { store.setSectionMap(serializeSectionMap(m)) }
+    }
+
+    fun loadOverview() {
+        val db = db ?: return
+        viewModelScope.launch {
+            dbOverview = try {
+                db.overview()
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
+    // -------- خواندن داده واقعی برای بخش‌های M•REPORT --------
+
+    suspend fun realTableFor(ref: String, sample: Int = 200): RealTable? = db?.realTable(ref, sample)
+
+    suspend fun realCountFor(ref: String): Long? = try {
+        val (s, t) = splitRef(ref)
+        db?.count(s, t)
+    } catch (_: Throwable) {
+        null
+    }
+
+    suspend fun realSumFor(ref: String, col: String?): Double? {
+        if (col == null) return null
+        return try {
+            val (s, t) = splitRef(ref)
+            db?.sumOf(s, t, col)
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    suspend fun realTopFor(ref: String, col: String?, limit: Int = 5): List<RealRow> {
+        if (col == null) return emptyList()
+        return try {
+            db?.realTop(ref, col, limit) ?: emptyList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    suspend fun realLatestFor(ref: String, col: String?, limit: Int = 8): List<RealRow> {
+        if (col == null) return emptyList()
+        return try {
+            db?.realLatest(ref, col, limit) ?: emptyList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
     /** تنظیمات دستیار هوشمند «پسته» */
     var ai by mutableStateOf(AiSettings())
         private set
@@ -147,7 +223,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 try {
                     candidate.test()
                     db = candidate
-                    screen = Screen.Tables
+                    screen = Screen.Demo
+                    loadOverview()
                 } catch (_: Throwable) {
                     screen = Screen.Login
                 }
@@ -228,7 +305,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         candidate.test()
         store.save(cfg.copy(password = if (cfg.remember) cfg.password else ""))
         db = candidate
-        screen = Screen.Tables
+        screen = Screen.Demo
+        loadOverview()
     }
 
     fun openTable(t: TableInfo) {

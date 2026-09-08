@@ -97,6 +97,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import ir.atiran.hamrah.viewer.data.RealRow
+import ir.atiran.hamrah.viewer.data.RealTable
+import ir.atiran.hamrah.viewer.data.SqlServerDb
+import ir.atiran.hamrah.viewer.data.TableHeuristics
 import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.AiChatSheet
 import ir.atiran.hamrah.viewer.ui.components.AiGreetingOverlay
@@ -104,6 +108,7 @@ import ir.atiran.hamrah.viewer.ui.components.AiSettingsSheet
 import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.CalmPulse
 import ir.atiran.hamrah.viewer.ui.components.EmptyBox
+import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
 import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
@@ -224,6 +229,7 @@ fun DemoScreen(vm: AppViewModel) {
     val extras = LocalThemeExtras.current
     var tab by remember { mutableIntStateOf(0) }
     var paletteOpen by remember { mutableStateOf(false) }
+    var mappingOpen by remember { mutableStateOf(false) }
     var customerOpen by remember { mutableStateOf<CustomerD?>(null) }
     var productOpen by remember { mutableStateOf<P3?>(null) }
     var refreshing by remember { mutableStateOf(false) }
@@ -258,6 +264,18 @@ fun DemoScreen(vm: AppViewModel) {
             greetVisible = true
             delay(7500)
             greetVisible = false
+        }
+    }
+    // اولین ورود در حالت سرور → باز شدن راهنمای «اتصال جداول»
+    LaunchedEffect(vm.db) {
+        if (vm.db != null) {
+            delay(2600)
+            val sm = vm.sectionMap.value
+            if (sm.customers == null && sm.products == null && sm.invoices == null &&
+                sm.checks == null && sm.banks == null
+            ) {
+                mappingOpen = true
+            }
         }
     }
     var intervalSec by remember { mutableStateOf(0) }
@@ -340,6 +358,9 @@ fun DemoScreen(vm: AppViewModel) {
                             tint = if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
                             active = refreshing,
                         ) { syncSheetOpen = true; SoundFx.soft() }
+                        if (vm.db != null) {
+                            MrOrbButton(MrIcons.Bank, "اتصال جداول سرور", size = 31.dp, tint = extras.gold) { mappingOpen = true; SoundFx.soft() }
+                        }
                         MrOrbButton(MrIcons.Theme, "شخصیت بصری", size = 31.dp, tint = extras.gold) { themeSheetOpen = true; SoundFx.soft() }
                         MrOrbButton(MrIcons.Waves, "تجربه رابط", size = 31.dp, tint = extras.accent) { expSheetOpen = true; SoundFx.soft() }
                     }
@@ -364,15 +385,24 @@ fun DemoScreen(vm: AppViewModel) {
             ) {
                 Spacer(Modifier.height(2.dp))
                 when (tab) {
-                    0 -> OverviewTab(vm, refreshing)
-                    1 -> CustomersTab { customerOpen = it }
-                    2 -> ProductsTab { productOpen = it }
-                    3 -> FinanceTab()
+                    0 -> OverviewTab(vm, refreshing, onOpenMapping = { mappingOpen = true })
+                    1 -> if (vm.db != null) {
+                        RealRecordsTab(vm, "customers", "مشتریان", MrIcons.Customers, onOpenMapping = { mappingOpen = true })
+                    } else {
+                        CustomersTab { customerOpen = it }
+                    }
+                    2 -> if (vm.db != null) {
+                        RealRecordsTab(vm, "products", "کالاها", MrIcons.Products, onOpenMapping = { mappingOpen = true })
+                    } else {
+                        ProductsTab { productOpen = it }
+                    }
+                    3 -> FinanceTab(vm, onOpenMapping = { mappingOpen = true })
                     4 -> ReportsTab()
                     else -> NotificationsTab(vm, onOpenAlerts = { alertsOpen = true }, onAddReminder = { reminderOpen = true })
                 }
                 Text(
-                    "★ داده‌های این بخش صرفاً برای نمایش قابلیت‌های M•REPORT است",
+                    if (vm.db != null) "★ متصل به سرور — داده‌های واقعی جداول وصل‌شده شما"
+                    else "★ داده‌های این بخش صرفاً برای نمایش قابلیت‌های M•REPORT است",
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 24.dp),
@@ -444,6 +474,9 @@ fun DemoScreen(vm: AppViewModel) {
     }
     if (reminderOpen) {
         AddReminderSheet(vm, onDismiss = { reminderOpen = false })
+    }
+    if (mappingOpen) {
+        MappingSheet(vm) { mappingOpen = false }
     }
 }
 
@@ -570,7 +603,7 @@ private fun MTab(label: String, selected: Boolean, onClick: () -> Unit) {
 
 // ============================================================ تب نمای کلی
 @Composable
-private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
+private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onOpenMapping: () -> Unit = {}) {
     val motion = vm.experience.motion
     val extras = LocalThemeExtras.current
     val scheme = MaterialTheme.colorScheme
@@ -585,6 +618,28 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
     val g2 = stagger(200, motion)
     val g3 = stagger(400, motion)
     val g4 = stagger(600, motion)
+
+    // ---------- حالت سرور: آمار واقعی از جداول وصل‌شده ----------
+    val live = vm.db != null
+    val smap by vm.sectionMap.collectAsState()
+    var liveStats by remember { mutableStateOf<Map<String, String>?>(null) }
+    LaunchedEffect(smap.customers, smap.products, smap.invoices, smap.checks) {
+        if (!live) return@LaunchedEffect
+        val out = LinkedHashMap<String, String>()
+        suspend fun cnt(key: String, ref: String?) {
+            if (ref != null) out[key] = vm.realCountFor(ref)?.let { faNum(it.toString()) } ?: "—"
+        }
+        cnt("customers", smap.customers)
+        cnt("products", smap.products)
+        cnt("checks", smap.checks)
+        if (smap.invoices != null) {
+            val t = try { vm.realTableFor(smap.invoices, 5) } catch (_: Throwable) { null }
+            val roles = t?.let { TableHeuristics.detectRoles(it.cols) }
+            val sum = vm.realSumFor(smap.invoices, roles?.amountCol)
+            out["invoices_sum"] = sum?.let { TableHeuristics.faMoney(it) } ?: "—"
+        }
+        liveStats = out
+    }
 
     // ---------- پوستر ----------
     Column(
@@ -611,11 +666,19 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
                     enabled = refreshing,
                 )
             }
-            PulseRow(MrIcons.Customers, "مشتریان", Color(0xFF69DB7C), "پایدار", 0.95f)
-            PulseRow(MrIcons.Receivables, "مطالبات", Color(0xFFFFA94D), "نیازمند توجه", 0.62f)
-            PulseRow(MrIcons.Checks, "چک‌ها", Color(0xFFFF6B6B), "بحرانی", 0.35f)
-            PulseRow(MrIcons.Products, "موجودی", Color(0xFF69DB7C), "پایدار", 0.88f)
-            PulseRow(MrIcons.Settings, "سیستم", extras.accent, "پایدار", 1f)
+            if (live) {
+                PulseRow(MrIcons.Customers, "مشتریان", Color(0xFF69DB7C), if (smap.customers != null) "متصل — " + (liveStats?.get("customers") ?: "…") + " رکورد" else "وصل نشده", if (smap.customers != null) 1f else 0.3f)
+                PulseRow(MrIcons.Products, "کالاها", Color(0xFF69DB7C), if (smap.products != null) "متصل — " + (liveStats?.get("products") ?: "…") + " رکورد" else "وصل نشده", if (smap.products != null) 1f else 0.3f)
+                PulseRow(MrIcons.Trend, "فروش", Color(0xFF69DB7C), if (smap.invoices != null) "متصل — مجموع " + (liveStats?.get("invoices_sum") ?: "…") else "وصل نشده", if (smap.invoices != null) 1f else 0.3f)
+                PulseRow(MrIcons.Checks, "چک‌ها", Color(0xFFFFA94D), if (smap.checks != null) "متصل — " + (liveStats?.get("checks") ?: "…") + " رکورد" else "وصل نشده", if (smap.checks != null) 1f else 0.3f)
+                PulseRow(MrIcons.Settings, "سیستم", extras.accent, "پایدار", 1f)
+            } else {
+                PulseRow(MrIcons.Customers, "مشتریان", Color(0xFF69DB7C), "پایدار", 0.95f)
+                PulseRow(MrIcons.Receivables, "مطالبات", Color(0xFFFFA94D), "نیازمند توجه", 0.62f)
+                PulseRow(MrIcons.Checks, "چک‌ها", Color(0xFFFF6B6B), "بحرانی", 0.35f)
+                PulseRow(MrIcons.Products, "موجودی", Color(0xFF69DB7C), "پایدار", 0.88f)
+                PulseRow(MrIcons.Settings, "سیستم", extras.accent, "پایدار", 1f)
+            }
             PulseRow(
                 MrIcons.Sync, "اتصال آتیران",
                 if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
@@ -628,29 +691,76 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
     // ---------- M•R Intelligence: لایه هوشمند روی داده‌ها ----------
     Section("M•R Intelligence") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            InsightRow(
-                MrIcons.Alerts, Color(0xFFFFA94D),
-                "۷ مشتری بیش از ۳۰ روز بدهی دارند",
-                "مجموع مطالبات این گروه: ۲۴۸٬۰۰۰٬۰۰۰ تومان",
-                chart = { MiniAgingBars() },
-            )
-            InsightRow(
-                MrIcons.Customers, scheme.error,
-                "بیشترین بدهکار: هایپر طلایی",
-                "۴۸٬۲۰۰٬۰۰۰ تومان — نزدیک‌ترین سررسید: ۱۸ شهریور",
-                chart = { MiniShareDonut() },
-            )
-            InsightRow(
-                MrIcons.Trend, extras.positive,
-                "روند مطالبات نسبت به دوره قبل",
-                "کاهش ۱۲٪ — بهبود وضعیت وصول مطالبات",
-                chart = { MiniTrendDown(extras.positive) },
-            )
-            Text(
-                "تحلیل خودکار روی داده‌های موجود — بدون تغییر هیچ اطلاعاتی",
-                style = MaterialTheme.typography.labelSmall,
-                color = scheme.onSurfaceVariant,
-            )
+            if (live) {
+                if (smap.allConnected) {
+                    InsightRow(
+                        MrIcons.Sync, extras.positive,
+                        "همه بخش‌ها به سرور وصل‌اند",
+                        "داده‌های این صفحه از جداول واقعی شما خوانده می‌شود",
+                        chart = { MiniTrendDown(extras.positive) },
+                    )
+                } else {
+                    // دعوت به تکمیل اتصال بخش‌ها
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(extras.glass)
+                            .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(scheme.primary.copy(alpha = 0.32f), scheme.primary.copy(alpha = 0.12f))
+                                    )
+                                )
+                                .border(1.dp, scheme.primary.copy(alpha = 0.5f), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(MrIcons.Bank, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(16.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("بخش‌های وصل‌نشده به سرور", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "جدول هر بخش را انتخاب کنید تا داده واقعی نمایش داده شود",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onSurfaceVariant,
+                            )
+                        }
+                        MrPillButton(label = "اتصال", onClick = onOpenMapping, icon = MrIcons.Sync)
+                    }
+                }
+            } else {
+                InsightRow(
+                    MrIcons.Alerts, Color(0xFFFFA94D),
+                    "۷ مشتری بیش از ۳۰ روز بدهی دارند",
+                    "مجموع مطالبات این گروه: ۲۴۸٬۰۰۰٬۰۰۰ تومان",
+                    chart = { MiniAgingBars() },
+                )
+                InsightRow(
+                    MrIcons.Customers, scheme.error,
+                    "بیشترین بدهکار: هایپر طلایی",
+                    "۴۸٬۲۰۰٬۰۰۰ تومان — نزدیک‌ترین سررسید: ۱۸ شهریور",
+                    chart = { MiniShareDonut() },
+                )
+                InsightRow(
+                    MrIcons.Trend, extras.positive,
+                    "روند مطالبات نسبت به دوره قبل",
+                    "کاهش ۱۲٪ — بهبود وضعیت وصول مطالبات",
+                    chart = { MiniTrendDown(extras.positive) },
+                )
+                Text(
+                    "تحلیل خودکار روی داده‌های موجود — بدون تغییر هیچ اطلاعاتی",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
         }
     }
 
@@ -676,7 +786,15 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
             Icon(MrIcons.Settings, contentDescription = "شخصی‌سازی داشبورد", tint = if (editLayout) scheme.primary else scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
     }
-    val ordered = order.map { heroes[it] }
+    val heroList = if (live) {
+        listOf(
+            Hero("مشتریان", liveStats?.get("customers") ?: "…", "رکورد", if (smap.customers != null) "از جدول " + smap.customers!! else "وصل نشده — از «اتصال جداول»", MrIcons.Customers, listOf(20, 30, 28, 34, 40, 44, 50)),
+            Hero("کالاها", liveStats?.get("products") ?: "…", "رکورد", if (smap.products != null) "از جدول " + smap.products!! else "وصل نشده", MrIcons.Products, listOf(30, 32, 31, 35, 38, 40, 42)),
+            Hero("گردش مالی", liveStats?.get("invoices_sum") ?: "…", "تومان", if (smap.invoices != null) "مجموع ستون مبلغ فروش" else "وصل نشده", MrIcons.Trend, listOf(30, 40, 38, 50, 55, 60, 70)),
+            Hero("چک‌ها", liveStats?.get("checks") ?: "…", "رکورد", if (smap.checks != null) "از جدول " + smap.checks!! else "وصل نشده", MrIcons.Checks, listOf(25, 27, 26, 28, 30, 31, 33)),
+        )
+    } else heroes
+    val ordered = order.map { heroList[it] }
     ordered.chunked(2).forEachIndexed { r, row ->
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             row.forEachIndexed { ci, h ->
@@ -703,19 +821,25 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
     // ---------- چارت‌های من — استودیو شخصی‌سازی داشبورد ----------
     MyChartsSection(vm)
 
-    // ---------- چارت اصلی: روند مطالبات و وصول طلب ----------
-    Section("روند مطالبات و وصول طلب — ۸ ماه اخیر") {
-        ReceivablesTrendChart(progress = g2)
-    }
+    if (live) {
+        // ---------- برترین‌های واقعی از جداول سرور ----------
+        RealTopChart(vm, smap.customers, "برترین مشتریان — بر اساس ستون مبلغ")
+        RealTopChart(vm, smap.products, "برترین کالاها — بر اساس ستون مبلغ")
+    } else {
+        // ---------- چارت اصلی: روند مطالبات و وصول طلب ----------
+        Section("روند مطالبات و وصول طلب — ۸ ماه اخیر") {
+            ReceivablesTrendChart(progress = g2)
+        }
 
-    // ---------- دونات مطالبات ----------
-    Section("وضعیت مطالبات") {
-        ReceivablesDonut(progress = g3)
-    }
+        // ---------- دونات مطالبات ----------
+        Section("وضعیت مطالبات") {
+            ReceivablesDonut(progress = g3)
+        }
 
-    // ---------- ستون‌های سه‌بعدی ----------
-    Section("Top Products — امضای بصری M•REPORT") {
-        Columns3D(topProducts3D, progress = g4)
+        // ---------- ستون‌های سه‌بعدی ----------
+        Section("Top Products — امضای بصری M•REPORT") {
+            Columns3D(topProducts3D, progress = g4)
+        }
     }
 }
 
@@ -2029,12 +2153,38 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     var filter by remember { mutableStateOf("همه") }
-    val cats = listOf("همه", "یادآور", "مهم", "مالی", "چک", "مشتری")
+    val cats = listOf("همه", "سرور", "یادآور", "مهم", "مالی", "چک", "مشتری")
     val done by vm.notifDone.collectAsState()
     val reminders by vm.reminders.collectAsState()
+    val smap by vm.sectionMap.collectAsState()
+    val invRef = smap.tableFor("invoices")
+
+    // آخرین رویدادهای واقعی سرور — از جدول فروش وصل‌شده
+    var latestRows by remember(invRef) { mutableStateOf<List<InboxRow>>(emptyList()) }
+    LaunchedEffect(invRef) {
+        latestRows = if (invRef != null) {
+            try {
+                val t = vm.realTableFor(invRef, 5)
+                val roles = TableHeuristics.detectRoles(t.cols)
+                vm.realLatestFor(invRef, roles.dateCol, 6).mapIndexed { i, r ->
+                    InboxRow(
+                        id = "srv_" + i + "_" + (r.value(roles.codeCol) ?: r.value(roles.titleCol) ?: ""),
+                        cat = "سرور",
+                        title = r.value(roles.titleCol) ?: "رکورد جدید فروش",
+                        sub = "از جدول سرور" + (r.value(roles.amountCol)?.let { " — مبلغ: " + it } ?: ""),
+                        time = r.value(roles.dateCol) ?: "",
+                        color = scheme.primary,
+                        isReminder = false,
+                    )
+                }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        } else emptyList()
+    }
 
     // صندوق ورودی: یادآورهای شخصی کاربر + اعلان‌های سیستمی — انجام‌شده‌ها پایین می‌روند
-    val all = reminders.map { r ->
+    val all = latestRows + reminders.map { r ->
         InboxRow(r.id, "یادآور", r.text, "موضوع: " + r.cat, Jalali.format(r.jy, r.jm, r.jd), scheme.primary, true)
     } + notifs.map { n ->
         InboxRow(n.id, n.cat, n.title, n.sub, n.time, n.color, false)
@@ -2192,6 +2342,7 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
                                 "مالی" -> MrIcons.Receivables
                                 "مهم" -> MrIcons.Alerts
                                 "یادآور" -> MrIcons.Reminder
+                                "سرور" -> MrIcons.Trend
                                 else -> MrIcons.Customers
                             },
                             contentDescription = null,
@@ -2889,6 +3040,416 @@ private fun Section(title: String, content: @Composable () -> Unit) {
                 )
             }
             content()
+        }
+    }
+}
+
+// ============================================================ داده واقعی سرور در M•REPORT
+
+/** دعوت به اتصال یک بخش به جدول سرور — وقتی هنوز نگاشت نشده */
+@Composable
+private fun UnmappedCard(title: String, onOpenMapping: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(scheme.primary.copy(alpha = 0.18f), scheme.primary.copy(alpha = 0.07f))
+                )
+            )
+            .border(1.dp, scheme.primary.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .clickable { onOpenMapping(); SoundFx.soft() }
+            .padding(horizontal = 13.dp, vertical = 12.dp),
+    ) {
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(scheme.primary.copy(alpha = 0.32f), scheme.primary.copy(alpha = 0.12f))
+                    )
+                )
+                .border(1.dp, scheme.primary.copy(alpha = 0.5f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(MrIcons.Bank, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(17.dp))
+        }
+        Column {
+            Text("اتصال «" + title + "» به سرور", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "جدول این بخش را انتخاب کنید تا داده واقعی همین‌جا نمایش داده شود",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** یک رکورد واقعی سرور — مقدار قالب‌بندی‌شده ستون مبلغ */
+private fun amountTextOf(row: RealRow, roles: ir.atiran.hamrah.viewer.data.TableRoles): String? {
+    val raw = row.value(roles.amountCol) ?: return null
+    val n = TableHeuristics.parseNum(raw)
+    return if (n != null) TableHeuristics.faMoney(n) else raw.take(18)
+}
+
+/**
+ * تب رکوردهای واقعی — همان قالب مشتریان/کالاها اما با داده سرور:
+ * جستجوی زنده، کارت شیشه‌ای با گوی سه‌بعدی و پرونده کامل رکورد.
+ */
+@Composable
+private fun RealRecordsTab(
+    vm: AppViewModel,
+    section: String,
+    title: String,
+    icon: ImageVector,
+    onOpenMapping: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    val map by vm.sectionMap.collectAsState()
+    val ref = map.tableFor(section)
+
+    var data by remember(ref) { mutableStateOf<RealTable?>(null) }
+    var error by remember(ref) { mutableStateOf<String?>(null) }
+    var q by remember { mutableStateOf("") }
+    var detail by remember { mutableStateOf<RealRow?>(null) }
+
+    LaunchedEffect(ref) {
+        data = null
+        error = null
+        if (ref != null) {
+            try {
+                data = vm.realTableFor(ref)
+            } catch (e: Throwable) {
+                error = SqlServerDb.friendly(e)
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // سربرگ: نشان سه‌بعدی + تعداد کل رکوردهای جدول
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .background(
+                        Brush.radialGradient(listOf(scheme.primary.copy(alpha = 0.30f), Color.Transparent)),
+                        CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(27.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(scheme.primary.copy(alpha = 0.32f), scheme.primary.copy(alpha = 0.10f))
+                            )
+                        )
+                        .border(1.dp, scheme.primary.copy(alpha = 0.55f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(14.dp))
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text(
+                    if (ref != null) ref + " — داده واقعی سرور" else "بخش «" + title + "»",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            if (data != null) {
+                Text(
+                    faNum(data!!.total.toString()) + " رکورد",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(scheme.primary.copy(alpha = 0.12f))
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                )
+            }
+        }
+
+        if (ref == null) {
+            UnmappedCard(title, onOpenMapping)
+            return@Column
+        }
+
+        error?.let {
+            ErrorBanner(it)
+        }
+
+        if (data == null && error == null) {
+            // بارگذاری — سه کارت شیشه‌ای آرام
+            repeat(3) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(62.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(extras.glass)
+                        .border(1.dp, extras.hairline, RoundedCornerShape(16.dp)),
+                )
+            }
+            Text(
+                "در حال خواندن «" + ref + "» از سرور...",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+            return@Column
+        }
+
+        data?.let { t ->
+            val roles = remember(t) { TableHeuristics.detectRoles(t.cols) }
+
+            // جستجوی زنده در همه ستون‌ها
+            OutlinedTextField(
+                value = q,
+                onValueChange = { q = it },
+                placeholder = { Text("جستجوی زنده در " + faNum(t.total.toString()) + " رکورد...") },
+                singleLine = true,
+                leadingIcon = { Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary) },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            val shown = t.rows.filter { row ->
+                q.isBlank() || row.values.any { it?.contains(q, true) == true }
+            }
+
+            if (shown.isEmpty()) {
+                EmptyBox("رکوردی یافت نشد", subtitle = "عبارت دیگری را جستجو کنید")
+            }
+
+            shown.forEach { row ->
+                RealRecordCard(
+                    title = row.value(roles.titleCol)
+                        ?: row.value(roles.codeCol)
+                        ?: "رکورد سرور",
+                    amount = amountTextOf(row, roles),
+                    code = row.value(roles.codeCol),
+                    icon = icon,
+                    onClick = { detail = row; SoundFx.soft() },
+                )
+            }
+
+            Text(
+                "★ " + faNum(shown.size.toString()) + " از " + faNum(t.total.toString()) +
+                    " رکورد نمایش داده شد — فهرست کامل در پانوشت هر کارت",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    detail?.let { row ->
+        val roles = data?.let { TableHeuristics.detectRoles(it.cols) }
+        RealRow360(
+            title = row.value(roles?.titleCol)
+                ?: row.value(roles?.codeCol)
+                ?: title,
+            amountText = roles?.let { amountTextOf(row, it) },
+            row = row,
+            onDismiss = { detail = null },
+        )
+    }
+}
+
+/** کارت رکورد واقعی — همان زبان بصری کارت مشتری/کالا */
+@Composable
+private fun RealRecordCard(
+    title: String,
+    amount: String?,
+    code: String?,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(extras.glass)
+            .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    ) {
+        // گوی سه‌بعدی
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.08f))
+                    )
+                )
+                .border(1.dp, scheme.primary.copy(alpha = 0.45f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(17.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                if (code != null) "کد: " + code + " — لمس برای پرونده کامل" else "لمس برای پرونده کامل",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+        if (amount != null) {
+            Text(
+                amount,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                color = scheme.primary,
+                maxLines = 1,
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = null,
+            tint = scheme.primary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+/** پرونده ۳۶۰ یک رکورد واقعی — همه ستون‌ها به زیبایی کل قالب */
+@Composable
+private fun RealRow360(
+    title: String,
+    amountText: String?,
+    row: RealRow,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
+                .padding(16.dp)
+                .heightIn(max = 600.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // سربرگ
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.10f))
+                            )
+                        )
+                        .border(1.dp, scheme.primary.copy(alpha = 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(17.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        title.take(40),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Text(
+                        "پرونده رکورد از جدول سرور — فقط خواندن",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // عدد قهرمان: ستون مبلغ
+            if (amountText != null) {
+                NumberHero(amountText, unit = "تومان", color = scheme.primary, autoFit = true, fixedHeight = 36.dp)
+            }
+            // همه ستون‌ها
+            row.colNames.take(60).forEachIndexed { i, col ->
+                val v = row.values.getOrNull(i)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(extras.glass)
+                        .border(1.dp, extras.hairline, RoundedCornerShape(13.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        col,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                    )
+                    Text(
+                        v ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
+            }
+            Spacer(Modifier.height(2.dp))
+            MrPillButton(
+                label = "بستن",
+                onClick = onDismiss,
+                icon = MrIcons.Close,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
+    }
+}
+
+/** چارت برترین‌های واقعی — ستون‌های سه‌بعدی از داده سرور */
+@Composable
+private fun RealTopChart(vm: AppViewModel, ref: String?, title: String) {
+    if (ref == null) return
+    var items by remember(ref) { mutableStateOf<List<P3>?>(null) }
+    LaunchedEffect(ref) {
+        items = try {
+            val t = vm.realTableFor(ref, 5)
+            val roles = TableHeuristics.detectRoles(t.cols)
+            vm.realTopFor(ref, roles.amountCol, 5).mapNotNull { r ->
+                val n = TableHeuristics.parseNum(r.value(roles.amountCol)) ?: return@mapNotNull null
+                val name = r.value(roles.titleCol) ?: r.value(roles.codeCol) ?: "؟"
+                P3(name.take(10), n.toFloat())
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+    items?.let { list ->
+        if (list.isNotEmpty()) {
+            Section(title) {
+                Columns3D(list, stagger(0, true))
+            }
         }
     }
 }

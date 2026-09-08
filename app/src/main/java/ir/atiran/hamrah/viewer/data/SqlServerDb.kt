@@ -448,6 +448,101 @@ class SqlServerDb(private val cfg: DbSettings) {
         }
     }
 
+    // ------------------------------------------------------------ خواندن برای M•REPORT
+
+    /** ستون‌های یک جدول — برای تشخیص نقش‌ها در نگاشت بخش‌ها */
+    suspend fun columns(schema: String, table: String): List<ColumnInfo> = withContext(Dispatchers.IO) {
+        open().use { c -> columnsOf(c, schema, table) }
+    }
+
+    /** تعداد کل رکوردهای یک جدول */
+    suspend fun count(schema: String, table: String): Long = withContext(Dispatchers.IO) {
+        open().use { c ->
+            c.createStatement().use { st ->
+                st.executeQuery("SELECT COUNT_BIG(*) FROM ${q(schema)}.${q(table)}").use { rs ->
+                    rs.next()
+                    rs.getLong(1)
+                }
+            }
+        }
+    }
+
+    /** مجموع یک ستون عددی — برای گردش مالی (خطا → null) */
+    suspend fun sumOf(schema: String, table: String, col: String): Double? = withContext(Dispatchers.IO) {
+        try {
+            open().use { c ->
+                c.createStatement().use { st ->
+                    st.executeQuery("SELECT SUM(CAST(${q(col)} AS FLOAT)) FROM ${q(schema)}.${q(table)}").use { rs ->
+                        if (rs.next()) rs.getDouble(1).takeIf { !rs.wasNull() } else null
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    /** N رکورد اول به‌ترتیب نزولی یک ستون — «برترین‌ها» */
+    suspend fun topBy(schema: String, table: String, orderCol: String, limit: Int): Pair<List<String>, List<List<String?>>> =
+        withContext(Dispatchers.IO) {
+            open().use { c ->
+                val cols = columnsOf(c, schema, table)
+                if (cols.none { it.name == orderCol }) {
+                    throw AtiranDbException("ستون «$orderCol» در جدول «$table» یافت نشد")
+                }
+                c.createStatement().use { st ->
+                    st.executeQuery(
+                        "SELECT TOP ${limit.coerceIn(1, 50)} * FROM ${q(schema)}.${q(table)} ORDER BY ${q(orderCol)} DESC"
+                    ).use { rs -> drain(rs) }
+                }
+            }
+        }
+
+    /** N رکورد آخر بر اساس ستون تاریخ */
+    suspend fun latestBy(schema: String, table: String, dateCol: String, limit: Int): Pair<List<String>, List<List<String?>>> =
+        withContext(Dispatchers.IO) {
+            open().use { c ->
+                val cols = columnsOf(c, schema, table)
+                if (cols.none { it.name == dateCol }) {
+                    throw AtiranDbException("ستون «$dateCol» در جدول «$table» یافت نشد")
+                }
+                c.createStatement().use { st ->
+                    st.executeQuery(
+                        "SELECT TOP ${limit.coerceIn(1, 50)} * FROM ${q(schema)}.${q(table)} ORDER BY ${q(dateCol)} DESC"
+                    ).use { rs -> drain(rs) }
+                }
+            }
+        }
+
+    /** خواندن نتیجه کوئری به (ستون‌ها، رکوردها) */
+    private fun drain(rs: java.sql.ResultSet): Pair<List<String>, List<List<String?>>> {
+        val md = rs.metaData
+        val n = md.columnCount
+        val names = (1..n).map { md.getColumnLabel(it) }
+        val out = ArrayList<List<String?>>()
+        while (rs.next()) {
+            val row = ArrayList<String?>(n)
+            for (ci in 1..n) {
+                val v: Any? = try {
+                    rs.getObject(ci)
+                } catch (_: Throwable) {
+                    try {
+                        rs.getString(ci)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                }
+                row += when (v) {
+                    null -> null
+                    is ByteArray -> "(داده باینری ${v.size} بایت)"
+                    else -> v.toString()
+                }
+            }
+            out += row
+        }
+        return names to out
+    }
+
     // ------------------------------------------------------------ ستون‌ها
     /** ستون‌های یک جدول از INFORMATION_SCHEMA (همزمان اعتبارسنجی وجود جدول) */
     private fun columnsOf(c: Connection, schema: String, table: String): List<ColumnInfo> {

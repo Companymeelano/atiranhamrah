@@ -3,10 +3,10 @@ package ir.atiran.hamrah.viewer.ui.screens
 /**
  * خزانه M•REPORT — مرکز مالی و بانکی
  *
- * همان‌قدر که مشتریان و کالاها مهم‌اند، حسابدار مجموعه به اسناد بانکی
- * نیاز دارد: حساب‌های بانکی، چک‌ها، دریافتی‌ها و پرداختی‌ها — همه با
- * همان زبان بصری بقیه برنامه: کارت شیشه‌ای، گوی سه‌بعدی، رنگ هماهنگ
- * با تم انتخابی کاربر و جستجوی زنده.
+ * دو حالت دارد:
+ *  - متصل: وقتی جداول «چک‌ها» یا «بانک‌ها» به سرور وصل شده باشند، اسناد
+ *    واقعی با همان قالب کارت شیشه‌ای و گوی سه‌بعدی نمایش داده می‌شود.
+ *  - نمایشی: داده نمونه برای دیدن تجربه کامل.
  */
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,10 +44,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ir.atiran.hamrah.viewer.data.RealRow
+import ir.atiran.hamrah.viewer.data.RealTable
+import ir.atiran.hamrah.viewer.data.TableRoles
+import ir.atiran.hamrah.viewer.data.TableHeuristics
+import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.CalmPulse
 import ir.atiran.hamrah.viewer.ui.components.EmptyBox
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
+import ir.atiran.hamrah.viewer.ui.components.MrPillButton
 import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
@@ -88,18 +96,46 @@ private fun finIcon(cat: String): ImageVector = when (cat) {
     else -> MrIcons.Wallet
 }
 
+/** ساخت سند خزانه از یک رکورد واقعی سرور */
+private fun realDoc(prefix: String, cat: String, row: RealRow, r: TableRoles, color: Color): FinDoc {
+    val amountRaw = row.value(r.amountCol)
+    val n = TableHeuristics.parseNum(amountRaw)
+    return FinDoc(
+        id = prefix + "_" + (row.value(r.codeCol) ?: row.value(r.titleCol) ?: ""),
+        cat = cat,
+        title = row.value(r.titleCol) ?: (cat + " — رکورد سرور"),
+        party = row.value(r.dateCol) ?: row.value(r.codeCol) ?: "",
+        amount = if (n != null) TableHeuristics.faMoney(n) else (amountRaw ?: "—"),
+        date = row.value(r.dateCol) ?: "",
+        color = color,
+    )
+}
+
 // ============================================================ تب خزانه
 
 @Composable
-fun FinanceTab() {
+fun FinanceTab(vm: AppViewModel, onOpenMapping: () -> Unit = {}) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
+    val map by vm.sectionMap.collectAsState()
+    val connected = vm.db != null
+    val checksRef = map.tableFor("checks")
+    val banksRef = map.tableFor("banks")
+    val live = connected && (checksRef != null || banksRef != null)
+
     var q by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf("همه") }
     val cats = listOf("همه", "بانک‌ها", "چک‌ها", "دریافتی‌ها", "پرداختی‌ها")
-    val list = finDocs.filter { d ->
-        (filter == "همه" || d.cat == filter) &&
-            (q.isBlank() || d.title.contains(q, true) || d.party.contains(q, true))
+
+    var checksData by remember(checksRef) { mutableStateOf<RealTable?>(null) }
+    var banksData by remember(banksRef) { mutableStateOf<RealTable?>(null) }
+    LaunchedEffect(checksRef, banksRef) {
+        checksData = if (checksRef != null) {
+            try { vm.realTableFor(checksRef, 120) } catch (_: Throwable) { null }
+        } else null
+        banksData = if (banksRef != null) {
+            try { vm.realTableFor(banksRef, 120) } catch (_: Throwable) { null }
+        } else null
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -133,81 +169,235 @@ fun FinanceTab() {
             Column {
                 Text("خزانه", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                 Text(
-                    "بانک‌ها، چک‌ها، دریافتی‌ها و پرداختی‌ها — برای حسابدار مجموعه",
+                    if (live) "اسناد واقعی از جداول وصل‌شده سرور شما"
+                    else "بانک‌ها، چک‌ها، دریافتی‌ها و پرداختی‌ها — برای حسابدار مجموعه",
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant,
                 )
             }
         }
 
-        // جستجوی زنده اسناد مالی — همان‌ند کالاها و مشتریان
-        OutlinedTextField(
-            value = q,
-            onValueChange = { q = it },
-            placeholder = { Text("جستجوی سند، بانک یا مشتری...") },
-            singleLine = true,
-            leadingIcon = { Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary) },
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // کارت خلاصه: موجودی کل بانک‌ها + سهم هر بانک
-        GlassCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        if (live) {
+            // ---------- حالت واقعی: اسناد از جداول سرور ----------
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "اسناد خزانه — متصل به سرور",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CalmPulse(extras.positive, dotSize = 7.dp)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(extras.glass)
+                                .border(1.dp, extras.hairline, RoundedCornerShape(13.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                        ) {
+                            Column {
+                                Text("چک‌ها", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                                Text(
+                                    TableHeuristics.faDigits((checksData?.total ?: 0).toString()) + " رکورد",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = scheme.primary,
+                                )
+                            }
+                        }
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(extras.glass)
+                                .border(1.dp, extras.hairline, RoundedCornerShape(13.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                        ) {
+                            Column {
+                                Text("بانک‌ها", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                                Text(
+                                    TableHeuristics.faDigits((banksData?.total ?: 0).toString()) + " رکورد",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = scheme.primary,
+                                )
+                            }
+                        }
+                    }
+                    val sumDocs = (checksData?.let { t ->
+                        val r = TableHeuristics.detectRoles(t.cols)
+                        t.rows.sumOf { TableHeuristics.parseNum(it.value(r.amountCol)) ?: 0.0 }
+                    } ?: 0.0) + (banksData?.let { t ->
+                        val r = TableHeuristics.detectRoles(t.cols)
+                        t.rows.sumOf { TableHeuristics.parseNum(it.value(r.amountCol)) ?: 0.0 }
+                    } ?: 0.0)
                     Text(
-                        "موجودی کل بانک‌ها",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = scheme.primary,
-                        modifier = Modifier.weight(1f),
+                        "مجموع ستون مبلغ اسناد نمایش‌داده‌شده: " + TableHeuristics.faMoney(sumDocs) + " تومان",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
                     )
-                    CalmPulse(extras.positive, dotSize = 7.dp)
                 }
-                NumberHero("۴۲۱٬۷۰۰٬۰۰۰", unit = "تومان", color = scheme.primary, autoFit = true, fixedHeight = 34.dp)
-                StudioDonut(bankDonut, centerText = "۳ بانک", centerSub = "فعال")
             }
-        }
 
-        // فیلتر دسته‌های مالی
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            cats.forEach { c ->
-                val sel = filter == c
-                Text(
-                    c,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (sel) extras.goldOn else scheme.onSurfaceVariant,
-                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+            // جستجوی زنده اسناد
+            OutlinedTextField(
+                value = q,
+                onValueChange = { q = it },
+                placeholder = { Text("جستجوی سند...") },
+                singleLine = true,
+                leadingIcon = { Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary) },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            val docs = buildList {
+                checksData?.let { t ->
+                    val r = TableHeuristics.detectRoles(t.cols)
+                    t.rows.forEach { row -> add(realDoc("chk", "چک‌ها", row, r, Color(0xFFFFA94D))) }
+                }
+                banksData?.let { t ->
+                    val r = TableHeuristics.detectRoles(t.cols)
+                    t.rows.forEach { row -> add(realDoc("bnk", "بانک‌ها", row, r, Color(0xFF74C0FC))) }
+                }
+            }
+            val shown = docs.filter { q.isBlank() || it.title.contains(q, true) || it.party.contains(q, true) }
+            if (shown.isEmpty()) {
+                EmptyBox(text = "سند مالی یافت نشد", subtitle = "نام دیگری را جستجو کنید")
+            }
+            shown.forEach { d -> FinDocCard(d) }
+            Text(
+                "★ اسناد واقعی از جداول وصل‌شده — " + TableHeuristics.faDigits(docs.size.toString()) + " رکورد نمایش داده شد",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+        } else {
+            // ---------- حالت نمایشی / دعوت به اتصال ----------
+            if (connected) {
+                // هنوز جدولی وصل نشده — دعوت به اتصال خزانه
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
                         .background(
-                            if (sel) Brush.horizontalGradient(extras.goldGradient)
-                            else Brush.verticalGradient(
-                                listOf(scheme.surfaceVariant.copy(alpha = 0.5f), scheme.surfaceVariant.copy(alpha = 0.5f))
+                            Brush.horizontalGradient(
+                                listOf(scheme.primary.copy(alpha = 0.18f), scheme.primary.copy(alpha = 0.07f))
                             )
                         )
-                        .border(
-                            width = 1.dp,
-                            color = if (sel) Color.Transparent else extras.hairline,
-                            shape = RoundedCornerShape(50),
+                        .border(1.dp, scheme.primary.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .clickable { onOpenMapping(); SoundFx.soft() }
+                        .padding(horizontal = 13.dp, vertical = 11.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(scheme.primary.copy(alpha = 0.32f), scheme.primary.copy(alpha = 0.12f))
+                                )
+                            )
+                            .border(1.dp, scheme.primary.copy(alpha = 0.5f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(MrIcons.Bank, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(16.dp))
+                    }
+                    Column {
+                        Text("اتصال خزانه به سرور", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "جداول چک‌ها و بانک‌ها را وصل کنید تا اسناد واقعی همین‌جا نمایش داده شود",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
                         )
-                        .clickable { filter = c; SoundFx.soft() }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = q,
+                onValueChange = { q = it },
+                placeholder = { Text("جستجوی سند، بانک یا مشتری...") },
+                singleLine = true,
+                leadingIcon = { Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary) },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // کارت خلاصه: موجودی کل بانک‌ها + سهم هر بانک
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "موجودی کل بانک‌ها",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CalmPulse(extras.positive, dotSize = 7.dp)
+                    }
+                    NumberHero("۴۲۱٬۷۰۰٬۰۰۰", unit = "تومان", color = scheme.primary, autoFit = true, fixedHeight = 34.dp)
+                    StudioDonut(bankDonut, centerText = "۳ بانک", centerSub = "فعال")
+                }
+            }
+
+            // فیلتر دسته‌های مالی
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                cats.forEach { c ->
+                    val sel = filter == c
+                    Text(
+                        c,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (sel) extras.goldOn else scheme.onSurfaceVariant,
+                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (sel) Brush.horizontalGradient(extras.goldGradient)
+                                else Brush.verticalGradient(
+                                    listOf(scheme.surfaceVariant.copy(alpha = 0.5f), scheme.surfaceVariant.copy(alpha = 0.5f))
+                                )
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (sel) Color.Transparent else extras.hairline,
+                                shape = RoundedCornerShape(50),
+                            )
+                            .clickable { filter = c; SoundFx.soft() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
+            // اسناد مالی نمونه
+            val list = finDocs.filter { d ->
+                (filter == "همه" || d.cat == filter) &&
+                    (q.isBlank() || d.title.contains(q, true) || d.party.contains(q, true))
+            }
+            if (list.isEmpty()) {
+                EmptyBox(
+                    text = "سند مالی یافت نشد",
+                    subtitle = "نام دیگری را جستجو کنید",
+                )
+            }
+            list.forEach { d -> FinDocCard(d) }
+            if (!connected) {
+                Text(
+                    "★ داده‌های نمایشی — با اتصال به سرور، اسناد واقعی جایگزین می‌شوند",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
                 )
             }
         }
-
-        // اسناد مالی
-        if (list.isEmpty()) {
-            EmptyBox(
-                text = "سند مالی یافت نشد",
-                subtitle = "نام دیگری را جستجو کنید",
-            )
-        }
-        list.forEach { d -> FinDocCard(d) }
     }
 }
 
