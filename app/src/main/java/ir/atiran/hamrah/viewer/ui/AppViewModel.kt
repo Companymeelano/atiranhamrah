@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import ir.atiran.hamrah.viewer.data.AiSettings
 import ir.atiran.hamrah.viewer.data.DbSettings
 import ir.atiran.hamrah.viewer.data.Experience
 import ir.atiran.hamrah.viewer.data.SettingsStore
@@ -61,6 +62,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val heroOrder = store.heroOrder
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** تنظیمات دستیار هوشمند «پسته» */
+    var ai by mutableStateOf(AiSettings())
+        private set
+
     /** زمان آخرین دریافت اطلاعات (Auto Refresh) */
     var lastSyncMs by mutableLongStateOf(System.currentTimeMillis())
         private set
@@ -81,6 +86,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 SoundFx.enabled = it.sound
                 MotionFx.enabled = it.motion
             }
+        }
+        viewModelScope.launch {
+            store.aiSettings.collect { ai = it }
         }
 
         // اتصال خودکار اگر رمز ذخیره‌شده داریم؛ در غیر این صورت صفحه ورود
@@ -150,6 +158,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openDemo() {
         screen = Screen.Demo
+        // پسته ورود کاربر را می‌شمارد تا دفعه بعد شخصی سلام کند
+        updateAi { it.copy(visits = it.visits + 1) }
+    }
+
+    /** تغییر تنظیمات دستیار هوشمند */
+    fun updateAi(transform: (AiSettings) -> AiSettings) {
+        val next = transform(ai)
+        ai = next
+        viewModelScope.launch { store.setAiSettings(next) }
     }
 
     fun closeDemo() {

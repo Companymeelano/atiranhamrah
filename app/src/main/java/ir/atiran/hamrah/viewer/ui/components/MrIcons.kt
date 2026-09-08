@@ -254,6 +254,33 @@ object MrIcons {
         ),
     )
 
+    /** هوش مصنوعی — جرقه چهارپر با نقطه برند */
+    val Spark: ImageVector = mrIcon(
+        name = "MRSpark",
+        strokes = listOf(
+            "M12,3.4 L13.85,10.15 L20.6,12 L13.85,13.85 L12,20.6 L10.15,13.85 L3.4,12 L10.15,10.15 Z",
+        ),
+        fills = listOf(
+            "M17.8,4.4 a1.25,1.25 0 1,0 0,2.5 a1.25,1.25 0 1,0 0,-2.5",
+        ),
+    )
+
+    /** ارسال — کاغذ پرنده */
+    val Send: ImageVector = mrIcon(
+        name = "MRSend",
+        strokes = listOf(
+            "M20.2,4.3 L4.2,10.8 L10.6,13.1 L12.9,19.6 Z M10.6,13.1 L20.2,4.3",
+        ),
+    )
+
+    /** بستن — ضربدر گرد */
+    val Close: ImageVector = mrIcon(
+        name = "MRClose",
+        strokes = listOf(
+            "M7.2,7.2 L16.8,16.8 M16.8,7.2 L7.2,16.8",
+        ),
+    )
+
     /** شخصیت بصری — جواهر/منشور با وجه‌های بریده */
     val Theme: ImageVector = mrIcon(
         name = "MRTheme",

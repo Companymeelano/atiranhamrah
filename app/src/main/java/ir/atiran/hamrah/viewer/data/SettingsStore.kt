@@ -18,6 +18,19 @@ data class Experience(
     val ambient: Boolean = true,
 )
 
+/** تنظیمات دستیار هوشمند «پسته» */
+data class AiSettings(
+    val enabled: Boolean = true,
+    /** اسم کاربر — پسته برای همیشه یادش می‌سپارد */
+    val userName: String = "",
+    /** لحن گفتار: شوخ | رسمی | خلاصه */
+    val mode: String = "شوخ",
+    /** بخش‌های قابل تحلیل توسط دستیار */
+    val domains: Set<String> = setOf("کالاها", "مشتریان", "مطالبات", "چک‌ها", "گزارش‌ها"),
+    /** تعداد دفعات ورود — برای سلام شخصی‌سازی‌شده */
+    val visits: Int = 0,
+)
+
 /** ذخیره‌سازی تنظیمات اتصال و تجربه (DataStore) */
 class SettingsStore(private val context: Context) {
 
@@ -34,6 +47,11 @@ class SettingsStore(private val context: Context) {
         val ambient = booleanPreferencesKey("ambient")
         val wowSweepDone = booleanPreferencesKey("wowSweepDone")
         val heroOrder = stringPreferencesKey("heroOrder")
+        val aiEnabled = booleanPreferencesKey("aiEnabled")
+        val aiName = stringPreferencesKey("aiName")
+        val aiMode = stringPreferencesKey("aiMode")
+        val aiDomains = stringPreferencesKey("aiDomains")
+        val aiVisits = intPreferencesKey("aiVisits")
     }
 
     /** تم انتخابی کاربر (۰ تا ۳) */
@@ -75,6 +93,27 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setHeroOrder(order: String) {
         context.dataStore.edit { it[Keys.heroOrder] = order }
+    }
+
+    /** تنظیمات دستیار هوشمند پسته */
+    val aiSettings: Flow<AiSettings> = context.dataStore.data.map { p ->
+        AiSettings(
+            enabled = p[Keys.aiEnabled] ?: true,
+            userName = p[Keys.aiName] ?: "",
+            mode = (p[Keys.aiMode] ?: "شوخ"),
+            domains = (p[Keys.aiDomains] ?: "کالاها,مشتریان,مطالبات,چک‌ها,گزارش‌ها").split(",").filter { it.isNotBlank() }.toSet(),
+            visits = p[Keys.aiVisits] ?: 0,
+        )
+    }
+
+    suspend fun setAiSettings(s: AiSettings) {
+        context.dataStore.edit {
+            it[Keys.aiEnabled] = s.enabled
+            it[Keys.aiName] = s.userName
+            it[Keys.aiMode] = s.mode
+            it[Keys.aiDomains] = s.domains.joinToString(",")
+            it[Keys.aiVisits] = s.visits
+        }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->

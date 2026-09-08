@@ -82,6 +82,7 @@ import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
 import ir.atiran.hamrah.viewer.ui.components.LightLine
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
+import ir.atiran.hamrah.viewer.ui.components.AiSettingsSheet
 import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
@@ -106,6 +107,7 @@ fun LoginScreen(vm: AppViewModel) {
     var error by remember { mutableStateOf<String?>(null) }
     var themeSheet by remember { mutableStateOf(false) }
     var soundSheet by remember { mutableStateOf(false) }
+    var aiSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     AmbientBackground(enabled = vm.experience.ambient) {
@@ -134,6 +136,12 @@ fun LoginScreen(vm: AppViewModel) {
                     MrIcons.Waves, "تجربه رابط",
                     tint = extras.accent,
                     onClick = { soundSheet = true; SoundFx.soft() },
+                )
+                Spacer(Modifier.width(8.dp))
+                MrOrbButton(
+                    MrIcons.Spark, "دستیار هوشمند پسته",
+                    tint = Color(0xFF8FB260),
+                    onClick = { aiSheet = true; SoundFx.soft() },
                 )
             }
 
@@ -320,6 +328,9 @@ fun LoginScreen(vm: AppViewModel) {
     }
     if (soundSheet) {
         ExperienceSheet(vm) { soundSheet = false }
+    }
+    if (aiSheet) {
+        AiSettingsSheet(vm) { aiSheet = false }
     }
 }
 

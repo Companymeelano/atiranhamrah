@@ -95,6 +95,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ir.atiran.hamrah.viewer.ui.AppViewModel
+import ir.atiran.hamrah.viewer.ui.components.AiChatSheet
+import ir.atiran.hamrah.viewer.ui.components.AiGreetingOverlay
+import ir.atiran.hamrah.viewer.ui.components.AiSettingsSheet
 import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.CalmPulse
 import ir.atiran.hamrah.viewer.ui.components.EmptyBox
@@ -106,6 +109,7 @@ import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
+import ir.atiran.hamrah.viewer.utils.AiBrain
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -235,6 +239,18 @@ fun DemoScreen(vm: AppViewModel) {
     var syncSheetOpen by remember { mutableStateOf(false) }
     var themeSheetOpen by remember { mutableStateOf(false) }
     var expSheetOpen by remember { mutableStateOf(false) }
+    var aiChatOpen by remember { mutableStateOf(false) }
+    var aiSettingsOpen by remember { mutableStateOf(false) }
+    var greetVisible by remember { mutableStateOf(false) }
+    // پسته بعد از ورود سلام می‌کند (فقط اگر فعال باشد)
+    LaunchedEffect(vm.ai.enabled) {
+        if (vm.ai.enabled) {
+            delay(1100)
+            greetVisible = true
+            delay(7500)
+            greetVisible = false
+        }
+    }
     var intervalSec by remember { mutableStateOf(0) }
     // به‌روزرسانی خودکار — بدون تغییر هیچ داده‌ای در آتیران
     LaunchedEffect(intervalSec) {
@@ -247,6 +263,7 @@ fun DemoScreen(vm: AppViewModel) {
     }
 
     AmbientBackground(enabled = vm.experience.ambient) {
+        Box(Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -272,17 +289,22 @@ fun DemoScreen(vm: AppViewModel) {
                     // نوار کنترل: جستجو + همگام‌سازی آتیران + شخصیت بصری + تجربه رابط
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(end = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        modifier = Modifier.padding(end = 4.dp),
                     ) {
-                        MrOrbButton(MrIcons.Search, "جستجوی هوشمند") { paletteOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند پسته", size = 33.dp, tint = Color(0xFF8FB260)) {
+                            if (vm.ai.enabled) aiChatOpen = true else aiSettingsOpen = true
+                            SoundFx.soft()
+                        }
+                        MrOrbButton(MrIcons.Search, "جستجوی هوشمند", size = 33.dp) { paletteOpen = true; SoundFx.soft() }
                         MrOrbButton(
                             MrIcons.Sync, "اتصال و همگام‌سازی آتیران",
+                            size = 33.dp,
                             tint = if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
                             active = refreshing,
                         ) { syncSheetOpen = true; SoundFx.soft() }
-                        MrOrbButton(MrIcons.Theme, "شخصیت بصری", tint = extras.gold) { themeSheetOpen = true; SoundFx.soft() }
-                        MrOrbButton(MrIcons.Waves, "تجربه رابط", tint = extras.accent) { expSheetOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Theme, "شخصیت بصری", size = 33.dp, tint = extras.gold) { themeSheetOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Waves, "تجربه رابط", size = 33.dp, tint = extras.accent) { expSheetOpen = true; SoundFx.soft() }
                     }
                 },
             )
@@ -320,6 +342,20 @@ fun DemoScreen(vm: AppViewModel) {
                 )
             }
         }
+        // خوشامدگویی پسته — دستیار هوشمند
+        if (greetVisible) {
+            AiGreetingOverlay(
+                text = AiBrain.greeting(
+                    AiBrain.Ctx(vm.ai.userName, vm.ai.mode, vm.ai.domains, vm.ai.visits)
+                ),
+                onChat = { greetVisible = false; aiChatOpen = true },
+                onClose = { greetVisible = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 14.dp, vertical = 16.dp),
+            )
+        }
+        }
     }
 
     if (paletteOpen) {
@@ -354,6 +390,16 @@ fun DemoScreen(vm: AppViewModel) {
     }
     if (expSheetOpen) {
         ExperienceSheet(vm) { expSheetOpen = false }
+    }
+    if (aiChatOpen) {
+        AiChatSheet(
+            vm = vm,
+            onDismiss = { aiChatOpen = false },
+            onOpenSettings = { aiChatOpen = false; aiSettingsOpen = true },
+        )
+    }
+    if (aiSettingsOpen) {
+        AiSettingsSheet(vm) { aiSettingsOpen = false }
     }
 }
 

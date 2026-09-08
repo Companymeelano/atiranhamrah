@@ -88,7 +88,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: AtiranHamrahViewer-v4.3.0-debug-apk
+          name: AtiranHamrahViewer-v4.4.0-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -96,8 +96,8 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.3.0-debug
-          name: "M•REPORT v4.3.0 — پرونده ۳۶۰ کامل، کاردکس داخل کالا و آیکون چشمگیر"
+          tag_name: v4.4.0-debug
+          name: "M•REPORT v4.4.0 — دستیار هوشمند «پسته» با شخصیت متحرک و حافظه"
           body: |
             نسخه ۲.۱.۰ — نمایشگر مدیریت دیتابیس آجیل و خشکبار
 
