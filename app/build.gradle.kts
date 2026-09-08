@@ -12,8 +12,8 @@ android {
         applicationId = "ir.atiran.hamrah.viewer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "4.7.0"
+        versionCode = 26
+        versionName = "4.7.1"
     }
 
     buildTypes {

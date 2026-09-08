@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,15 +68,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ir.atiran.hamrah.viewer.data.DbSettings
+import ir.atiran.hamrah.viewer.data.DiagStep
 import ir.atiran.hamrah.viewer.data.SqlServerDb
 import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
@@ -107,6 +109,9 @@ fun LoginScreen(vm: AppViewModel) {
     var rememberMe by remember { mutableStateOf(saved.remember) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var errorRaw by remember { mutableStateOf<String?>(null) }
+    var diag by remember { mutableStateOf<List<DiagStep>?>(null) }
+    var diagBusy by remember { mutableStateOf(false) }
     var themeSheet by remember { mutableStateOf(false) }
     var soundSheet by remember { mutableStateOf(false) }
     var aiSheet by remember { mutableStateOf(false) }
@@ -200,8 +205,8 @@ fun LoginScreen(vm: AppViewModel) {
                     OutlinedTextField(
                         value = host,
                         onValueChange = { host = it },
-                        label = { Text("سرور (IP)") },
-                        placeholder = { Text("37.143.147.19") },
+                        label = { Text("سرور (IP یا SERVER\\SQLEXPRESS)") },
+                        placeholder = { Text("37.143.147.19 یا 37.143.147.19\\SQL2019") },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Filled.Dns, contentDescription = null) },
                         shape = RoundedCornerShape(14.dp),
@@ -272,6 +277,14 @@ fun LoginScreen(vm: AppViewModel) {
                     }
 
                     ErrorBanner(error)
+                    if (errorRaw != null) {
+                        Text(
+                            "جزئیات فنی: " + errorRaw!!,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                    }
 
                     Button(
                         onClick = {
@@ -291,6 +304,7 @@ fun LoginScreen(vm: AppViewModel) {
                                     SoundFx.success()
                                 } catch (e: Throwable) {
                                     error = SqlServerDb.friendly(e)
+                                    errorRaw = (e.message ?: e.toString()).replace("\n", " ").take(220)
                                 } finally {
                                     busy = false
                                 }
@@ -315,6 +329,53 @@ fun LoginScreen(vm: AppViewModel) {
                             Text("در حال اتصال...")
                         } else {
                             Text("ورود", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            diagBusy = true
+                            error = null
+                            errorRaw = null
+                            scope.launch {
+                                try {
+                                    val cfg = DbSettings(
+                                        host = host.trim(),
+                                        port = port.trim().ifBlank { "1433" },
+                                        database = database.trim(),
+                                        user = user.trim(),
+                                        password = password,
+                                        remember = rememberMe,
+                                    )
+                                    diag = SqlServerDb(cfg).diagnose()
+                                    SoundFx.soft()
+                                } catch (e: Throwable) {
+                                    diag = listOf(
+                                        DiagStep(false, "شروع عیب‌یابی", SqlServerDb.friendly(e))
+                                    )
+                                } finally {
+                                    diagBusy = false
+                                }
+                            }
+                        },
+                        enabled = !diagBusy && host.isNotBlank(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.primary),
+                        border = BorderStroke(1.dp, extras.hairline),
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                    ) {
+                        if (diagBusy) {
+                            CircularProgressIndicator(
+                                color = scheme.primary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text("در حال بررسی سرور...")
+                        } else {
+                            Icon(MrIcons.Sync, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("تست و عیب‌یابی اتصال")
                         }
                     }
 
@@ -352,6 +413,120 @@ fun LoginScreen(vm: AppViewModel) {
     }
     if (aiSheet) {
         AiSettingsSheet(vm) { aiSheet = false }
+    }
+    diag?.let { steps ->
+        DiagSheet(steps) { diag = null }
+    }
+}
+
+// ------------------------------------------------------------ شیت عیب‌یابی اتصال
+/**
+ * نتیجه تست گام‌به‌گام اتصال به سرور — هر گام با وضعیت، توضیح و راهنمای رفع؛
+ * هماهنگ با تم انتخابی کاربر.
+ */
+@Composable
+private fun DiagSheet(steps: List<DiagStep>, onDismiss: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
+                .padding(18.dp)
+                .heightIn(max = 580.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            // سربرگ: نشان سه‌بعدی عیب‌یابی
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.10f))
+                            )
+                        )
+                        .border(1.dp, scheme.primary.copy(alpha = 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(MrIcons.Sync, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("عیب‌یابی اتصال", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "گام‌به‌گام تا پیدا کردن مشکل — هماهنگ با وضعیت واقعی سرور شما",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+            steps.forEach { s ->
+                Row(
+                    verticalAlignment = Alignment.Top,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(extras.glass)
+                        .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 11.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (s.ok) extras.positive.copy(alpha = 0.22f) else scheme.error.copy(alpha = 0.18f)
+                            )
+                            .border(
+                                1.dp,
+                                if (s.ok) extras.positive.copy(alpha = 0.5f) else scheme.error.copy(alpha = 0.5f),
+                                CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (s.ok) "✓" else "✗",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (s.ok) extras.positive else scheme.error,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            s.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (s.ok) MaterialTheme.colorScheme.onSurface else scheme.error,
+                        )
+                        Text(
+                            s.detail,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                        )
+                        if (s.hint != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "راهنما: " + s.hint,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+            MrPillButton(
+                label = "بستن",
+                onClick = onDismiss,
+                icon = MrIcons.Close,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
     }
 }
 
