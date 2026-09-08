@@ -2423,7 +2423,7 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                                                 .clip(CircleShape)
                                                 .background(if (e.positive) extras.positive else scheme.error)
                                         )
-                                        if (i < activity.size - 1) {
+                                        if (i < entries.size - 1) {
                                             Box(
                                                 Modifier
                                                     .width(1.dp)
