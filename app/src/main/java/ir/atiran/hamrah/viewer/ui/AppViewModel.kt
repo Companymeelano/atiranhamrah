@@ -100,7 +100,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     candidate.test()
                     db = candidate
                     screen = Screen.Tables
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                     screen = Screen.Login
                 }
             } else {

@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,8 @@ import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.AiBrain
 import ir.atiran.hamrah.viewer.utils.SoundFx
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private data class AiMsg(val me: Boolean, val text: String)
 
@@ -199,9 +202,14 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                 listOf(
                     "فروش امروز؟" to "گزارش‌ها",
                     "مقایسه با دیروز" to "گزارش‌ها",
-                    "وضعیت مطالبات" to "مطالبات",
+                    "بهترین مشتری کیه؟" to "مشتریان",
+                    "مشتریان جدید" to "مشتریان",
                     "بهترین کالا" to "کالاها",
+                    "موجودی پسته" to "کالاها",
+                    "وضعیت مطالبات" to "مطالبات",
+                    "بدهکارها کیان؟" to "مطالبات",
                     "چک‌های نزدیک" to "چک‌ها",
+                    "سررسید فردا" to "چک‌ها",
                     "پیشنهاد بده" to "",
                 ).forEach { (q, domain) ->
                     if (domain.isBlank() || domain in vm.ai.domains) {
@@ -399,6 +407,33 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
             )
+            // دکمه ذخیره + اطلاع‌رسانی
+            var saved by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (saved) {
+                    Text(
+                        "تنظیمات ذخیره شد ✓",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                MrPillButton(
+                    label = if (saved) "ذخیره شد ✓" else "ذخیره تنظیمات",
+                    icon = MrIcons.Bookmark,
+                    onClick = {
+                    if (!saved) {
+                        saved = true
+                        SoundFx.success()
+                        scope.launch {
+                            delay(1300)
+                            onDismiss()
+                        }
+                    }
+                },
+                )
+            }
         }
     }
 }

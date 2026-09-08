@@ -89,7 +89,7 @@ class SqlServerDb(private val cfg: DbSettings) {
                         if (rs.next()) (rs.getString(1) ?: "").substringBefore('\n').trim() else ""
                     }
                 }
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 ""
             }
 
@@ -101,7 +101,7 @@ class SqlServerDb(private val cfg: DbSettings) {
                         if (rs.next()) rs.getLong(1) else null
                     }
                 }
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 null
             }
 
@@ -221,10 +221,10 @@ class SqlServerDb(private val cfg: DbSettings) {
                         for (ci in 1 until n) {
                             val v: Any? = try {
                                 rs.getObject(ci)
-                            } catch (_: Exception) {
+                            } catch (_: Throwable) {
                                 try {
                                     rs.getString(ci)
-                                } catch (_: Exception) {
+                                } catch (_: Throwable) {
                                     null
                                 }
                             }

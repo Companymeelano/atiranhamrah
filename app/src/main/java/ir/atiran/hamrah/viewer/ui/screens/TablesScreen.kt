@@ -70,7 +70,7 @@ fun TablesScreen(vm: AppViewModel) {
         try {
             val db = vm.db ?: throw IllegalStateException("اتصال برقرار نیست — دوباره وارد شوید")
             overview = db.overview()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             error = SqlServerDb.friendly(e)
         } finally {
             loading = false

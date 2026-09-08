@@ -46,6 +46,8 @@ fun Pistachio(
     size: Dp = 56.dp,
     modifier: Modifier = Modifier,
     bobbing: Boolean = true,
+    /** رنگ اکسسوری — هماهنگ با تم انتخابی کاربر */
+    themeTint: Color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
 ) {
     val tr = rememberInfiniteTransition(label = "pistachio")
     val t by tr.animateFloat(
@@ -179,19 +181,74 @@ fun Pistachio(
             eye(41f, wink)
             eye(59f, false)
 
-            // ---------- لپ‌های گیج
-            drawCircle(Color(0xFFE2906B).copy(alpha = 0.32f), radius = x(3.4f), center = Offset(x(35f), y(40.5f)))
-            drawCircle(Color(0xFFE2906B).copy(alpha = 0.32f), radius = x(3.4f), center = Offset(x(65f), y(40.5f)))
-
-            // ---------- لبخند
-            val smiling = if (wink) 200f else 150f
-            drawArc(
+            // ---------- ابروهای بانمک (هنگام چشمک بالا می‌روند!)
+            val browLift = if (wink) 3.2f else 0f
+            drawPath(
+                Path().apply {
+                    moveTo(x(37.2f), y(28.5f - browLift))
+                    quadraticBezierTo(x(41f), y(25.6f - browLift), x(44.8f), y(28.5f - browLift))
+                },
                 color = Color(0xFF3A2E1B),
-                startAngle = 15f, sweepAngle = smiling, useCenter = false,
-                topLeft = Offset(x(43.5f), y(38.5f)),
-                size = Size(x(13f), x(11f)),
-                style = Stroke(1.9f * u, cap = StrokeCap.Round),
+                style = Stroke(1.7f * u, cap = StrokeCap.Round),
             )
+            drawPath(
+                Path().apply {
+                    moveTo(x(55.2f), y(28.5f - browLift))
+                    quadraticBezierTo(x(59f), y(25.6f - browLift), x(62.8f), y(28.5f - browLift))
+                },
+                color = Color(0xFF3A2E1B),
+                style = Stroke(1.7f * u, cap = StrokeCap.Round),
+            )
+
+            // ---------- لپ‌های گیج (بزرگ‌تر و بامزه‌تر)
+            drawCircle(Color(0xFFE2906B).copy(alpha = 0.38f), radius = x(4.2f), center = Offset(x(34.6f), y(41f)))
+            drawCircle(Color(0xFFE2906B).copy(alpha = 0.38f), radius = x(4.2f), center = Offset(x(65.4f), y(41f)))
+
+            // ---------- لبخند (هنگام چشمک: دهان باز خنده‌دار + زبان!)
+            if (wink) {
+                // دهان خنده باز
+                drawPath(
+                    Path().apply {
+                        moveTo(x(43.5f), y(41.5f))
+                        quadraticBezierTo(x(50f), y(49.5f), x(56.5f), y(41.5f))
+                        close()
+                    },
+                    color = Color(0xFF3A2E1B),
+                )
+                // زبان
+                drawPath(
+                    Path().apply {
+                        moveTo(x(47f), y(45.4f))
+                        quadraticBezierTo(x(50f), y(49.6f), x(53f), y(45.4f))
+                        close()
+                    },
+                    color = Color(0xFFE2906B),
+                )
+            } else {
+                drawArc(
+                    color = Color(0xFF3A2E1B),
+                    startAngle = 15f, sweepAngle = 150f, useCenter = false,
+                    topLeft = Offset(x(43.5f), y(38.5f)),
+                    size = Size(x(13f), x(11f)),
+                    style = Stroke(1.9f * u, cap = StrokeCap.Round),
+                )
+            }
+
+            // ---------- پاپیون هم‌رنگ تم — هماهنگی پسته با قالب
+            val bow = Path().apply {
+                moveTo(x(50f), y(62f))
+                lineTo(x(42.5f), y(57.6f))
+                quadraticBezierTo(x(40.8f), y(62f), x(42.5f), y(66.4f))
+                close()
+                moveTo(x(50f), y(62f))
+                lineTo(x(57.5f), y(57.6f))
+                quadraticBezierTo(x(59.2f), y(62f), x(57.5f), y(66.4f))
+                close()
+            }
+            drawPath(bow, color = themeTint.copy(alpha = 0.92f))
+            drawPath(bow, color = Color.Black.copy(alpha = 0.10f), style = Stroke(0.7f * u))
+            drawCircle(themeTint, radius = x(1.9f), center = Offset(x(50f), y(62f)))
+            drawCircle(Color.White.copy(alpha = 0.5f), radius = x(0.7f), center = Offset(x(49.3f), y(61.2f)))
 
             // ---------- برگچه سرش
             drawPath(

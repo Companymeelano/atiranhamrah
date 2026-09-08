@@ -84,10 +84,12 @@ import ir.atiran.hamrah.viewer.ui.components.LightLine
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
 import ir.atiran.hamrah.viewer.ui.components.AiSettingsSheet
 import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
+import ir.atiran.hamrah.viewer.ui.components.MrPillButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -147,11 +149,30 @@ fun LoginScreen(vm: AppViewModel) {
 
             Spacer(Modifier.height(26.dp))
 
-            // ---------- پوستر M•REPORT ----------
+            // ---------- پوستر M•REPORT — با جاروی نور ورودی ----------
+            val entry = remember { androidx.compose.animation.core.Animatable(0f) }
+            LaunchedEffect(Unit) {
+                entry.animateTo(1f, tween(1200, easing = androidx.compose.animation.core.LinearEasing))
+            }
+            val et = entry.value
+            val titleBrush = if (et > 0f && et < 1f) {
+                val band = 0.3f
+                val c = (et * (1f + band) - band / 2f)
+                val hi = androidx.compose.ui.graphics.lerp(extras.brand[1], Color.White, 0.85f)
+                Brush.horizontalGradient(
+                    0f to extras.brand.first(),
+                    (c - band / 2f).coerceIn(0f, 1f) to extras.brand[1],
+                    c.coerceIn(0f, 1f) to hi,
+                    (c + band / 2f).coerceIn(0f, 1f) to extras.brand[1],
+                    1f to extras.brand.last(),
+                )
+            } else {
+                Brush.horizontalGradient(extras.brand)
+            }
             Text(
                 "M•REPORT",
                 style = TextStyle(
-                    brush = Brush.horizontalGradient(extras.brand),
+                    brush = titleBrush,
                     fontSize = 38.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 3.sp,
@@ -268,7 +289,7 @@ fun LoginScreen(vm: AppViewModel) {
                                     )
                                     vm.login(cfg)
                                     SoundFx.success()
-                                } catch (e: Exception) {
+                                } catch (e: Throwable) {
                                     error = SqlServerDb.friendly(e)
                                 } finally {
                                     busy = false
@@ -456,6 +477,30 @@ fun ThemeSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                     }
                 }
             }
+            // ذخیره + اطلاع‌رسانی
+            var savedTheme by remember { mutableStateOf(false) }
+            val themeScope = rememberCoroutineScope()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (savedTheme) {
+                    Text(
+                        "تنظیمات ذخیره شد ✓",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                MrPillButton(
+                    label = if (savedTheme) "ذخیره شد ✓" else "ذخیره",
+                    icon = MrIcons.Bookmark,
+                    onClick = {
+                        if (!savedTheme) {
+                            savedTheme = true
+                            SoundFx.success()
+                            themeScope.launch { delay(1300); onDismiss() }
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -495,6 +540,30 @@ fun ExperienceSheet(vm: AppViewModel, onDismiss: () -> Unit) {
             }
             ExpRow("Ambient Effects", "نور محیطی بسیار محو پس‌زمینه", exp.ambient) {
                 vm.updateExperience(exp.copy(ambient = it))
+            }
+            // ذخیره + اطلاع‌رسانی
+            var savedExp by remember { mutableStateOf(false) }
+            val expScope = rememberCoroutineScope()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (savedExp) {
+                    Text(
+                        "تنظیمات ذخیره شد ✓",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                MrPillButton(
+                    label = if (savedExp) "ذخیره شد ✓" else "ذخیره",
+                    icon = MrIcons.Bookmark,
+                    onClick = {
+                        if (!savedExp) {
+                            savedExp = true
+                            SoundFx.success()
+                            expScope.launch { delay(1300); onDismiss() }
+                        }
+                    },
+                )
             }
         }
     }

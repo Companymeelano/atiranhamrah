@@ -81,7 +81,7 @@ fun TableDataScreen(vm: AppViewModel, schema: String, table: String) {
                 limit = PAGE_SIZE.toLong(),
                 searchQuery = activeQuery.trim(),
             )
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             error = SqlServerDb.friendly(e)
         } finally {
             loading = false

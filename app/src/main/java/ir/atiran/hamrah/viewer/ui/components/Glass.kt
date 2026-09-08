@@ -331,6 +331,50 @@ fun GlassAction(
     }
 }
 
+// ============================================================ دکمه بستن/ذخیره
+/**
+ * دکمه Pill هماهنگ با تم — برای بستن پرونده‌ها یا «ذخیره تنظیمات»؛
+ * گرادیان عمودی رنگ تم، آیکون اختیاری و فیزیک فشردن.
+ */
+@Composable
+fun MrPillButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    tint: Color = MaterialTheme.colorScheme.primary,
+) {
+    val extras = LocalThemeExtras.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(120), label = "pillScale")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(50))
+            .background(
+                Brush.verticalGradient(
+                    listOf(tint.copy(alpha = 0.16f), tint.copy(alpha = 0.05f))
+                )
+            )
+            .border(1.dp, tint.copy(alpha = 0.45f), RoundedCornerShape(50))
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .padding(horizontal = 18.dp, vertical = 9.dp),
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = tint,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
 // ============================================================ دکمه-گوی سه‌بعدی
 /**
  * دکمه کنترلی M•REPORT — گوی شیشه‌ای با:

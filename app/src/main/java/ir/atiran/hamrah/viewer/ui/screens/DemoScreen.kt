@@ -106,6 +106,7 @@ import ir.atiran.hamrah.viewer.ui.components.EmptyBox
 import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
+import ir.atiran.hamrah.viewer.ui.components.MrCloseButton
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
 import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
@@ -354,7 +355,7 @@ fun DemoScreen(vm: AppViewModel) {
                 onClose = { greetVisible = false },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 14.dp, vertical = 16.dp),
+                    .padding(horizontal = 14.dp, vertical = 84.dp),
             )
         }
         }
@@ -1734,39 +1735,6 @@ private fun ProductCard(p: P3, onOpen: (P3) -> Unit) {
             contentDescription = null,
             tint = scheme.primary,
             modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-/** دکمه بستن هماهنگ با تم — Pill شیشه‌ای با گرادیان و فیزیک فشردن */
-@Composable
-private fun MrCloseButton(label: String = "بستن", onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val extras = LocalThemeExtras.current
-    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(120), label = "closeScale")
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(50))
-            .background(
-                Brush.verticalGradient(
-                    listOf(scheme.primary.copy(alpha = 0.16f), scheme.primary.copy(alpha = 0.05f))
-                )
-            )
-            .border(1.dp, scheme.primary.copy(alpha = 0.45f), RoundedCornerShape(50))
-            .clickable(interactionSource = interaction, indication = null) { onClick(); SoundFx.soft() }
-            .padding(horizontal = 18.dp, vertical = 9.dp),
-    ) {
-        Icon(MrIcons.Close, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(14.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = scheme.primary,
-            fontWeight = FontWeight.Bold,
         )
     }
 }
