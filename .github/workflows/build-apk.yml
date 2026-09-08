@@ -88,7 +88,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: AtiranHamrahViewer-v4.8.0-debug-apk
+          name: AtiranHamrahViewer-v4.8.1-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -96,8 +96,8 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.8.0-debug
-          name: "M•REPORT v4.8.0 — اتصال M•REPORT به داده واقعی سرور: نگاشت جداول هر بخش"
+          tag_name: v4.8.1-debug
+          name: "M•REPORT v4.8.1 — رفع باگ‌های اتصال: پشتیبانی IP:port و نوشتار SSMS، سه حالت رمزنگاری و عیب‌یابی دقیق"
           body: |
             نسخه ۲.۱.۰ — نمایشگر مدیریت دیتابیس آجیل و خشکبار
 

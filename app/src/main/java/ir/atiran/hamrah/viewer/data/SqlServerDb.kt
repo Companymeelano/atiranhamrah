@@ -72,31 +72,91 @@ class SqlServerDb(private val cfg: DbSettings) {
         private fun q(ident: String): String = "[" + ident.replace("]", "]]") + "]"
     }
 
-    /** نام سرور و نمونه — پشتیبانی از SERVER\INSTANCE (مثل SERVER\SQLEXPRESS) */
-    private val serverHost: String = cfg.host.trim().substringBefore('\\')
-    private val instanceName: String? =
-        cfg.host.trim().substringAfter('\\', "").takeIf { it.isNotBlank() }
+    /** هدف تجزیه‌شده — هاست خالص، پورت و نمونه */
+    private data class Target(val host: String, val port: Int?, val instance: String?)
 
-    /** حالت رمزنگاری که قبلاً جواب داده — تا اتصال‌های بعدی دوباره تست نشوند */
-    @Volatile
-    private var tlsWorked: Boolean? = null
-
-    private fun url(encrypt: Boolean, timeoutSec: Int = 20, portOverride: Int? = null): String {
-        val sb = StringBuilder("jdbc:sqlserver://").append(serverHost)
-        // با نمونه (instance)، پورت نمی‌گذاریم تا درایور از SQL Browser پورت واقعی را بپرسد
-        if (instanceName == null) {
-            val port = portOverride ?: cfg.port.trim().ifBlank { "1433" }.toIntOrNull() ?: 1433
-            sb.append(":").append(port)
+    /**
+     * تجزیه مقاوم آدرس سرور — همان چیزی که کاربر تایپ می‌کند:
+     *  «37.143.147.19» ، «37.143.147.19:1433» ، «37.143.147.19,1433» (نوشتار SSMS)،
+     *  «SERVER\SQLEXPRESS» و «SERVER\INST:1433» — با ارقام فارسی هم.
+     */
+    private fun parseTarget(): Target {
+        fun latin(s: String): String = s.map { c ->
+            when (c) {
+                in '۰'..'۹' -> ('0' + (c - '۰'))
+                in '٠'..'٩' -> ('0' + (c - '٠'))
+                else -> c
+            }
+        }.joinToString("")
+        val rawAll = latin(cfg.host).trim()
+        val raw = rawAll.substringBefore('\\').trim()
+        val instPart = rawAll.substringAfter('\\', "").trim()
+        var instance: String? = null
+        var embeddedPort: Int? = null
+        if (instPart.isNotBlank()) {
+            val ip = instPart.substringBefore(':').substringBefore(',').trim()
+            val pp = instPart.substringAfter(':', "").substringAfter(',', "").trim()
+            instance = ip.ifBlank { null }
+            embeddedPort = pp.toIntOrNull()
         }
+        var host = raw
+        if (raw.count { it == ':' } == 1 && !raw.contains("::")) {
+            val h = raw.substringBefore(':').trim()
+            val pt = raw.substringAfter(':', "").trim()
+            if (pt.isNotEmpty() && pt.all { it in '0'..'9' }) {
+                host = h
+                if (embeddedPort == null) embeddedPort = pt.toInt()
+            }
+        } else if (raw.contains(',')) {
+            val h = raw.substringBefore(',').trim()
+            val pt = raw.substringAfter(',', "").trim()
+            if (pt.isNotEmpty() && pt.all { it in '0'..'9' }) {
+                host = h
+                if (embeddedPort == null) embeddedPort = pt.toInt()
+            }
+        }
+        val portField = cfg.port.trim()
+        val port: Int? = when {
+            embeddedPort != null -> embeddedPort
+            instance != null && (portField.isBlank() || portField == "1433") -> null
+            else -> portField.ifBlank { "1433" }.toIntOrNull() ?: 1433
+        }
+        return Target(host, port, instance)
+    }
+
+    private val target: Target = parseTarget()
+    private val serverHost: String get() = target.host
+    private val instanceName: String? get() = target.instance
+
+    /** حالت اتصال که قبلاً جواب داده: ۰=TLS پیش‌فرض، ۱=TLS با پروتکل JSSE، ۲=بدون رمزنگاری */
+    @Volatile
+    private var mode: Int? = null
+
+    /**
+     * ساخت URL بر اساس حالت اتصال:
+     *  0 = رمزنگاری با تنظیم پیش‌فرض درایور
+     *  1 = رمزنگاری با پروتکل پیش‌فرض JSSE (sslProtocol=TLS)
+     *  2 = بدون رمزنگاری
+     */
+    private fun urlFor(m: Int, timeoutSec: Int = 15, portOverride: Int? = null): String {
+        val sb = StringBuilder("jdbc:sqlserver://").append(serverHost)
+        val port = portOverride ?: target.port
+        if (port != null) sb.append(":").append(port)
         sb.append(";databaseName=").append(cfg.database.trim())
-        sb.append(";encrypt=").append(if (encrypt) "true" else "false")
-        if (encrypt) sb.append(";trustServerCertificate=true")
+        when (m) {
+            2 -> sb.append(";encrypt=false")
+            1 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLS")
+            else -> sb.append(";encrypt=true;trustServerCertificate=true")
+        }
         sb.append(";loginTimeout=").append(timeoutSec)
         sb.append(";connectRetryCount=1;connectRetryDelay=1")
         sb.append(";applicationName=AtiranHamrahViewer")
         if (instanceName != null) sb.append(";instanceName=").append(instanceName)
         return sb.toString()
     }
+
+    /** آیا خطا با تغییر حالت اتصال قابل بازیابی است؟ */
+    private fun recoverable(e: Throwable): Boolean = isTlsError(e) || isTimeout(e)
 
     /** آیا خطا مربوط به رمزنگاری/دست‌دادن TLS است؟ */
     private fun isTlsError(e: Throwable): Boolean {
@@ -125,21 +185,17 @@ class SqlServerDb(private val cfg: DbSettings) {
      * بدون رمزنگاری؛ خروجی null یعنی موفق، وگرنه آخرین خطا.
      */
     private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
-        return try {
-            DriverManager.getConnection(url(true, timeoutSec, port), props()).use { }
-            null
-        } catch (e: Throwable) {
-            if (isTlsError(e) || isTimeout(e)) {
-                try {
-                    DriverManager.getConnection(url(false, timeoutSec, port), props()).use { }
-                    null
-                } catch (e2: Throwable) {
-                    e2
-                }
-            } else {
-                e
+        var last: Throwable? = null
+        for (m in intArrayOf(0, 1, 2)) {
+            try {
+                DriverManager.getConnection(urlFor(m, timeoutSec, port), props()).use { }
+                return null
+            } catch (e: Throwable) {
+                if (!recoverable(e)) return e
+                last = e
             }
         }
+        return last
     }
 
     /**
@@ -154,11 +210,11 @@ class SqlServerDb(private val cfg: DbSettings) {
                 s.soTimeout = 7000
                 val prelogin = byteArrayOf(
                     0x12, 0x01, 0x00, 0x1A, 0x00, 0x00, 0x00, 0x00,
-                    0x00, 0x00, 0x0B, 0x00, 0x06,
-                    0x01, 0x00, 0x11, 0x00, 0x01,
+                    0x00, 0x00, 0x13, 0x00, 0x06,
+                    0x01, 0x00, 0x19, 0x00, 0x01,
                     0xFF.toByte(),
                     0x0F, 0x00, 0x07, 0xD6.toByte(), 0x00, 0x00,
-                    0x01,
+                    0x00,
                 )
                 s.getOutputStream().write(prelogin)
                 s.getOutputStream().flush()
@@ -205,22 +261,21 @@ class SqlServerDb(private val cfg: DbSettings) {
     }
 
     /**
-     * اتصال هوشمند: اول با رمزنگاری TLS؛ اگر سرور TLS قدیمی/خرابی داشت،
-     * خودکار یک‌بار بدون رمزنگاری امتحان می‌کند و حالت جواب‌داده را نگه می‌دارد.
+     * اتصال سه‌مرحله‌ای: TLS پیش‌فرض درایور → TLS با پروتکل JSSE → بدون رمزنگاری؛
+     * حالت جواب‌داده به‌خاطر سپرده می‌شود تا اتصال‌های بعدی سریع باشند.
      */
     private fun open(): Connection {
-        tlsWorked?.let { worked ->
-            return DriverManager.getConnection(url(worked), props())
-        }
-        return try {
-            DriverManager.getConnection(url(true), props()).also { tlsWorked = true }
-        } catch (e: Throwable) {
-            if (isTlsError(e) || isTimeout(e)) {
-                DriverManager.getConnection(url(false), props()).also { tlsWorked = false }
-            } else {
-                throw e
+        mode?.let { m -> return DriverManager.getConnection(urlFor(m), props()) }
+        var last: Throwable? = null
+        for (m in intArrayOf(0, 1, 2)) {
+            try {
+                return DriverManager.getConnection(urlFor(m), props()).also { mode = m }
+            } catch (e: Throwable) {
+                if (!recoverable(e)) throw e
+                last = e
             }
         }
+        throw last ?: AtiranDbException("اتصال به سرور در هر سه حالت رمزنگاری ناموفق بود")
     }
 
     // ------------------------------------------------------------ عیب‌یابی
@@ -234,7 +289,10 @@ class SqlServerDb(private val cfg: DbSettings) {
         // گام ۱: پیدا کردن سرور در شبکه
         try {
             val addr = java.net.InetAddress.getByName(serverHost)
-            steps += DiagStep(true, "پیدا کردن سرور", "آدرس سرور: " + addr.hostAddress)
+            val targetDesc = addr.hostAddress +
+                (target.port?.let { ":" + it } ?: "") +
+                (target.instance?.let { " (نمونه " + it + ")" } ?: "")
+            steps += DiagStep(true, "پیدا کردن سرور", "هدف اتصال: " + targetDesc)
         } catch (e: Throwable) {
             steps += DiagStep(
                 false, "پیدا کردن سرور",
@@ -245,8 +303,8 @@ class SqlServerDb(private val cfg: DbSettings) {
         }
 
         // گام ۲: درگاه TCP + سنجش واقعی سرویس TDS (فقط وقتی نمونه ندارد)
-        val portNum = cfg.port.trim().ifBlank { "1433" }.toIntOrNull() ?: 1433
-        if (instanceName == null) {
+        val portNum = target.port ?: 1433
+        if (instanceName == null || target.port != null) {
             try {
                 java.net.Socket().use { s ->
                     s.connect(java.net.InetSocketAddress(serverHost, portNum), 6000)
@@ -317,25 +375,35 @@ class SqlServerDb(private val cfg: DbSettings) {
             )
         }
 
-        // گام ۳ تا ۵: اتصال کامل — رمزنگاری، ورود، دیتابیس
+        // گام ۳ تا ۵: اتصال کامل — سه حالت رمزنگاری، ورود، دیتابیس
         try {
-            var tlsNote = "دست‌دادن امن با سرور موفق بود"
-            try {
-                DriverManager.getConnection(url(true, 15), props()).use { }
-            } catch (e: Throwable) {
-                if (isTlsError(e) || isTimeout(e)) {
-                    DriverManager.getConnection(url(false), props()).use { }
-                    tlsNote = "سرور TLS را نپذیرفت یا پاسخ نداد — اتصال بدون رمزنگاری برقرار شد"
-                    steps += DiagStep(
-                        true, "رمزنگاری اتصال (TLS)", tlsNote,
-                        "بهتر است TLS 1.2 در سرور فعال شود؛ تا آن زمان برنامه خودش بدون رمزنگاری وصل می‌شود.",
-                    )
-                } else {
-                    throw e
+            var connectedMode = -1
+            var modeErr: Throwable? = null
+            for (m in intArrayOf(0, 1, 2)) {
+                try {
+                    DriverManager.getConnection(urlFor(m, 15), props()).use { }
+                    connectedMode = m
+                    break
+                } catch (e: Throwable) {
+                    if (!recoverable(e)) throw e
+                    modeErr = e
                 }
             }
-            if (steps.none { it.title.startsWith("رمزنگاری") }) {
-                steps += DiagStep(true, "رمزنگاری اتصال (TLS)", tlsNote)
+            if (connectedMode == -1) {
+                throw modeErr ?: AtiranDbException("هیچ حالت اتصال جواب نداد")
+            }
+            when (connectedMode) {
+                0 -> steps += DiagStep(true, "رمزنگاری اتصال (TLS)", "دست‌دادن امن با سرور موفق بود")
+                1 -> steps += DiagStep(
+                    true, "رمزنگاری اتصال (TLS)",
+                    "اتصال امن با پروتکل جایگزین برقرار شد",
+                    "پروتکل پیش‌فرض درایور با سرور شما هم‌خوان نبود؛ برنامه خودش حالت سازگار را پیدا کرد.",
+                )
+                else -> steps += DiagStep(
+                    true, "رمزنگاری اتصال",
+                    "سرور TLS را نپذیرفت — اتصال بدون رمزنگاری برقرار شد",
+                    "برای امنیت بیشتر، TLS 1.2 را در سرور فعال کنید.",
+                )
             }
             steps += DiagStep(true, "ورود با نام کاربری و رمز", "اعتبارنامه پذیرفته شد")
             steps += DiagStep(true, "باز کردن دیتابیس «" + cfg.database.trim() + "»", "دیتابیس در دسترس است")
@@ -376,7 +444,7 @@ class SqlServerDb(private val cfg: DbSettings) {
     }
 
     private fun shortErr(e: Throwable): String =
-        (e.message ?: e.toString()).replace("\n", " ").take(200)
+        (e.javaClass.simpleName + ": " + (e.message ?: "")).replace("\n", " ").take(230)
 
     // ------------------------------------------------------------ ورود
     /** تست اتصال با نام کاربری/رمز — موفقیت = اعتبارنامه درست است. نسخه سرور را برمی‌گرداند. */
