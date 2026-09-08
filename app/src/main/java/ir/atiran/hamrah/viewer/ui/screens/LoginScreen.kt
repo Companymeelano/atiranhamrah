@@ -101,6 +101,7 @@ fun LoginScreen(vm: AppViewModel) {
     val extras = LocalThemeExtras.current
 
     var host by remember { mutableStateOf(saved.host) }
+    var localMode by remember { mutableStateOf(saved.local) }
     var port by remember { mutableStateOf(saved.port) }
     var database by remember { mutableStateOf(saved.database) }
     var user by remember { mutableStateOf(saved.user) }
@@ -146,7 +147,7 @@ fun LoginScreen(vm: AppViewModel) {
                 )
                 Spacer(Modifier.width(8.dp))
                 MrOrbButton(
-                    MrIcons.Spark, "دستیار هوشمند پسته",
+                    MrIcons.Spark, "دستیار هوشمند فندق",
                     tint = Color(0xFF8FB260),
                     onClick = { aiSheet = true; SoundFx.soft() },
                 )
@@ -202,11 +203,57 @@ fun LoginScreen(vm: AppViewModel) {
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    // مسیر اتصال: اینترنت (تونل) | شبکه محلی
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        listOf(
+                            false to "اینترنت · تونل",
+                            true to "شبکه محلی",
+                        ).forEach { (isLocal, label) ->
+                            val sel = localMode == isLocal
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (sel) extras.goldOn else scheme.onSurfaceVariant,
+                                fontWeight = if (sel) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        if (sel) androidx.compose.ui.graphics.Brush.horizontalGradient(extras.goldGradient)
+                                        else androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            listOf(scheme.surfaceVariant.copy(alpha = 0.5f), scheme.surfaceVariant.copy(alpha = 0.5f))
+                                        )
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (sel) androidx.compose.ui.graphics.Color.Transparent else extras.hairline,
+                                        RoundedCornerShape(50),
+                                    )
+                                    .clickable {
+                                        localMode = isLocal
+                                        SoundFx.soft()
+                                        // در حالت محلی، اگر هنوز IP عمومی پیش‌فرض است راهنمایی کن
+                                        if (isLocal && host.trim() == "37.143.147.19") host = ""
+                                    }
+                                    .padding(vertical = 8.dp)
+                                    .fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                        }
+                    }
+                    if (localMode) {
+                        Text(
+                            "حالت محلی فعال است — IP داخلی سرور (مثل 192.168.1.10) را وارد کنید؛ اتصال مستقیم از داخل شبکه، بدون تونل اینترنت",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = extras.positive,
+                        )
+                    }
+
                     OutlinedTextField(
                         value = host,
                         onValueChange = { host = it },
-                        label = { Text("سرور (IP یا SERVER\\SQLEXPRESS)") },
-                        placeholder = { Text("37.143.147.19 یا 37.143.147.19\\SQL2019") },
+                        label = { Text(if (localMode) "IP داخلی سرور (شبکه محلی)" else "سرور (IP یا SERVER\\SQLEXPRESS)") },
+                        placeholder = { Text(if (localMode) "192.168.1.10 یا 192.168.1.10\\SQL2019" else "37.143.147.19 یا 37.143.147.19\\SQL2019") },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Filled.Dns, contentDescription = null) },
                         shape = RoundedCornerShape(14.dp),
@@ -299,6 +346,7 @@ fun LoginScreen(vm: AppViewModel) {
                                         user = user.trim(),
                                         password = password,
                                         remember = rememberMe,
+                                        local = localMode,
                                     )
                                     vm.login(cfg)
                                     SoundFx.success()
@@ -346,6 +394,7 @@ fun LoginScreen(vm: AppViewModel) {
                                         user = user.trim(),
                                         password = password,
                                         remember = rememberMe,
+                                        local = localMode,
                                     )
                                     diag = SqlServerDb(cfg).diagnose()
                                     SoundFx.soft()

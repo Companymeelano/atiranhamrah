@@ -19,6 +19,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -27,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.atiran.hamrah.viewer.R
+import ir.atiran.hamrah.viewer.ui.components.FandoghIntro
 import ir.atiran.hamrah.viewer.ui.screens.DemoScreen
 import ir.atiran.hamrah.viewer.ui.screens.LoginScreen
 import ir.atiran.hamrah.viewer.ui.screens.TableDataScreen
@@ -37,14 +40,21 @@ import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 @Composable
 fun AtiranApp(vm: AppViewModel) {
     val theme = AppThemeId.entries.getOrNull(vm.themeId) ?: AppThemeId.Obsidian
+    // انیمیشن ورود — فندق و گونی آجیل؛ یک‌بار در هر اجرای برنامه
+    var introDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     AtiranAppTheme(themeId = theme) {
-        when (val s = vm.screen) {
-            is Screen.Boot -> BootScreen()
-            is Screen.Login -> LoginScreen(vm)
-            is Screen.Tables -> TablesScreen(vm)
-            is Screen.TableData -> TableDataScreen(vm = vm, schema = s.schema, table = s.table)
-            is Screen.Demo -> DemoScreen(vm)
+        Box(Modifier.fillMaxSize()) {
+            when (val s = vm.screen) {
+                is Screen.Boot -> BootScreen()
+                is Screen.Login -> LoginScreen(vm)
+                is Screen.Tables -> TablesScreen(vm)
+                is Screen.TableData -> TableDataScreen(vm = vm, schema = s.schema, table = s.table)
+                is Screen.Demo -> DemoScreen(vm)
+            }
+            if (!introDone) {
+                FandoghIntro(onDone = { introDone = true })
+            }
         }
     }
 }

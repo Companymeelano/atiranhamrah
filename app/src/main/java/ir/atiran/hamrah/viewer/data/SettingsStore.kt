@@ -18,10 +18,10 @@ data class Experience(
     val ambient: Boolean = true,
 )
 
-/** تنظیمات دستیار هوشمند «پسته» */
+/** تنظیمات دستیار هوشمند «فندق» */
 data class AiSettings(
     val enabled: Boolean = true,
-    /** اسم کاربر — پسته برای همیشه یادش می‌سپارد */
+    /** اسم کاربر — فندق برای همیشه یادش می‌سپارد */
     val userName: String = "",
     /** لحن گفتار: شوخ | رسمی | خلاصه */
     val mode: String = "شوخ",
@@ -41,6 +41,7 @@ class SettingsStore(private val context: Context) {
         val user = stringPreferencesKey("user")
         val password = stringPreferencesKey("password")
         val remember = booleanPreferencesKey("remember")
+        val local = booleanPreferencesKey("local")
         val themeId = intPreferencesKey("themeId")
         val sound = booleanPreferencesKey("sound")
         val motion = booleanPreferencesKey("motion")
@@ -100,7 +101,7 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { it[Keys.heroOrder] = order }
     }
 
-    /** تنظیمات دستیار هوشمند پسته */
+    /** تنظیمات دستیار هوشمند فندق */
     val aiSettings: Flow<AiSettings> = context.dataStore.data.map { p ->
         AiSettings(
             enabled = p[Keys.aiEnabled] ?: true,
@@ -164,6 +165,7 @@ class SettingsStore(private val context: Context) {
             user = p[Keys.user] ?: DbSettings.DEFAULT_USER,
             password = p[Keys.password] ?: "",
             remember = p[Keys.remember] ?: true,
+            local = p[Keys.local] ?: false,
         )
     }
 
@@ -175,6 +177,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.user] = s.user.trim()
             p[Keys.password] = s.password
             p[Keys.remember] = s.remember
+            p[Keys.local] = s.local
         }
     }
 

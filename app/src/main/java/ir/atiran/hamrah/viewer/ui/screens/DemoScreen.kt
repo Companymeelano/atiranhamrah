@@ -257,7 +257,7 @@ fun DemoScreen(vm: AppViewModel) {
     // شمارنده هشدارهای تازه — با باز کردن مرکز توجه صفر می‌شود
     val alertSeen by vm.alertSeen.collectAsState()
     val unseen = unseenAlertCount(alertSeen)
-    // پسته بعد از ورود سلام می‌کند (فقط اگر فعال باشد)
+    // فندق بعد از ورود سلام می‌کند (فقط اگر فعال باشد)
     LaunchedEffect(vm.ai.enabled) {
         if (vm.ai.enabled) {
             delay(1100)
@@ -347,7 +347,7 @@ fun DemoScreen(vm: AppViewModel) {
                                 }
                             }
                         }
-                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند پسته", size = 31.dp, tint = Color(0xFF8FB260)) {
+                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند فندق", size = 31.dp, tint = Color(0xFF8FB260)) {
                             if (vm.ai.enabled) aiChatOpen = true else aiSettingsOpen = true
                             SoundFx.soft()
                         }
@@ -409,7 +409,7 @@ fun DemoScreen(vm: AppViewModel) {
                 )
             }
         }
-        // خوشامدگویی پسته — دستیار هوشمند
+        // خوشامدگویی فندق — دستیار هوشمند
         if (greetVisible) {
             AiGreetingOverlay(
                 text = AiBrain.greeting(
@@ -2155,6 +2155,7 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
     val extras = LocalThemeExtras.current
     var filter by remember { mutableStateOf("همه") }
     val cats = listOf("همه", "سرور", "یادآور", "مهم", "مالی", "چک", "مشتری")
+    var noteFor by remember { mutableStateOf<InboxRow?>(null) }
     val done by vm.notifDone.collectAsState()
     val reminders by vm.reminders.collectAsState()
     val smap by vm.sectionMap.collectAsState()
@@ -2186,7 +2187,14 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
 
     // صندوق ورودی: یادآورهای شخصی کاربر + اعلان‌های سیستمی — انجام‌شده‌ها پایین می‌روند
     val all = latestRows + reminders.map { r ->
-        InboxRow(r.id, "یادآور", r.text, "موضوع: " + r.cat, Jalali.format(r.jy, r.jm, r.jd), scheme.primary, true)
+        InboxRow(
+            r.id, "یادآور", r.text,
+            "موضوع: " + r.cat + (r.note?.let { " · یادداشت: " + it } ?: ""),
+            Jalali.format(r.jy, r.jm, r.jd) + " — " + Jalali.fa(
+                r.hh.toString().padStart(2, '0') + ":" + r.mm.toString().padStart(2, '0')
+            ),
+            scheme.primary, true,
+        )
     } + notifs.map { n ->
         InboxRow(n.id, n.cat, n.title, n.sub, n.time, n.color, false)
     }
@@ -2277,7 +2285,7 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
         }
 
         Text(
-            "برای «انجام‌شدن» اعلان را لمس کنید — خط می‌خورد و پایین می‌رود؛ دوباره لمس کنید تا برگردد",
+            "لمس اعلان = انجام‌شده با خط قرمز و انتقال به پایین؛ یادآورها اول توضیح می‌پرسند؛ لمس دوباره = برگشت",
             style = MaterialTheme.typography.labelSmall,
             color = scheme.onSurfaceVariant,
         )
@@ -2311,7 +2319,14 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
                         if (isDone) extras.hairline.copy(alpha = 0.5f) else extras.hairline,
                         RoundedCornerShape(16.dp),
                     )
-                    .clickable { vm.toggleNotifDone(n.id); SoundFx.soft() }
+                    .clickable {
+                        SoundFx.soft()
+                        if (n.isReminder) {
+                            if (isDone) vm.toggleNotifDone(n.id) else noteFor = n
+                        } else {
+                            vm.toggleNotifDone(n.id)
+                        }
+                    }
                     .padding(horizontal = 12.dp, vertical = 11.dp),
             ) {
                 // نشان سه‌بعدی هماهنگ با دسته اعلان
@@ -2354,14 +2369,24 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        n.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = if (isDone) scheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                        textDecoration = if (isDone) TextDecoration.LineThrough else null,
-                        maxLines = 1,
-                    )
+                    Box(Modifier.fillMaxWidth()) {
+                        Text(
+                            n.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDone) scheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                        )
+                        if (isDone) {
+                            Box(
+                                Modifier
+                                    .matchParentSize()
+                                    .height(1.5.dp)
+                                    .align(Alignment.Center)
+                                    .background(scheme.error)
+                            )
+                        }
+                    }
                     Text(
                         n.sub,
                         style = MaterialTheme.typography.labelSmall,
@@ -2397,6 +2422,94 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
                         )
                     }
                 }
+            }
+        }
+    }
+
+    // دیالوگ توضیح انجام یادآور — اختیاری، بعد خط قرمز و انتقال به پایین
+    noteFor?.let { row ->
+        CompleteNoteDialog(
+            title = row.title,
+            onConfirm = { note ->
+                vm.completeReminder(row.id, note)
+                noteFor = null
+            },
+            onDismiss = { noteFor = null },
+        )
+    }
+}
+
+/** دیالوگ «انجام شد با توضیح» برای یادآورها — هماهنگ با تم */
+@Composable
+private fun CompleteNoteDialog(
+    title: String,
+    onConfirm: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    var note by remember { mutableStateOf("") }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(22.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, extras.hairline, RoundedCornerShape(22.dp))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(extras.positive.copy(alpha = 0.30f), extras.positive.copy(alpha = 0.10f))
+                            )
+                        )
+                        .border(1.dp, extras.positive.copy(alpha = 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        androidx.compose.material.icons.Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = extras.positive,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                Spacer(Modifier.width(9.dp))
+                Column {
+                    Text("این کار انجام شد؟", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        title.take(50),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                placeholder = { Text("توضیح اختیاری... مثلاً: تلفن زدم، قول داد جمعه واریز کنه") },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                MrPillButton(
+                    label = "بدون توضیح",
+                    onClick = { onConfirm(null); SoundFx.soft() },
+                    modifier = Modifier.weight(1f),
+                )
+                MrPillButton(
+                    label = "انجام شد ✓",
+                    onClick = { onConfirm(note); SoundFx.success() },
+                    icon = MrIcons.Bookmark,
+                    tint = extras.positive,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }

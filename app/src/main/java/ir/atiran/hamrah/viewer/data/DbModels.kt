@@ -8,6 +8,8 @@ data class DbSettings(
     val user: String = DEFAULT_USER,
     val password: String = "",
     val remember: Boolean = true,
+    /** حالت محلی: اتصال از داخل شبکه داخلی به IP داخلی سرور (بدون تونل اینترنت) */
+    val local: Boolean = false,
 ) {
     companion object {
         /** مقادیر پیش‌فرض سازمانی — قابل ویرایش در صفحه ورود */

@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** یادآور شخصی کاربر — هشدار بر پایه تقویم شمسی */
+/** یادآور شخصی کاربر — هشدار بر پایه تقویم شمسی با آلارم قابل تنظیم */
 data class Reminder(
     val id: String,
     val cat: String,
@@ -42,6 +42,16 @@ data class Reminder(
     val jy: Int,
     val jm: Int,
     val jd: Int,
+    /** ساعت آلارم */
+    val hh: Int = 9,
+    val mm: Int = 0,
+    /** چند وقت قبل از موعد، آلارم به صدا دربیاید */
+    val offsetValue: Int = 0,
+    val offsetUnit: String = "دقیقه",
+    /** نوع صدای آلارم: ملایم | معمولی | فوری */
+    val sound: String = "معمولی",
+    /** یادداشت انجام (وقتی کاربر تکمیلش کند) */
+    val note: String? = null,
 )
 
 /** سریال‌سازی یادآورها به JSON — امن برای هر متنی */
@@ -56,6 +66,12 @@ private fun serializeReminders(list: List<Reminder>): String {
                 put("y", r.jy)
                 put("m", r.jm)
                 put("d", r.jd)
+                put("hh", r.hh)
+                put("mm", r.mm)
+                put("ov", r.offsetValue)
+                put("ou", r.offsetUnit)
+                put("snd", r.sound)
+                if (r.note != null) put("note", r.note)
             }
         )
     }
@@ -73,6 +89,12 @@ private fun parseReminders(raw: String): List<Reminder> = try {
             jy = o.optInt("y", 1404),
             jm = o.optInt("m", 1).coerceIn(1, 12),
             jd = o.optInt("d", 1).coerceIn(1, 31),
+            hh = o.optInt("hh", 9).coerceIn(0, 23),
+            mm = o.optInt("mm", 0).coerceIn(0, 59),
+            offsetValue = o.optInt("ov", 0).coerceAtLeast(0),
+            offsetUnit = o.optString("ou", "دقیقه"),
+            sound = o.optString("snd", "معمولی"),
+            note = if (o.has("note")) o.optString("note") else null,
         )
     }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
 } catch (_: Throwable) {
@@ -189,7 +211,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** تنظیمات دستیار هوشمند «پسته» */
+    /** تنظیمات دستیار هوشمند «فندق» */
     var ai by mutableStateOf(AiSettings())
         private set
 
@@ -295,9 +317,65 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         .map { raw -> parseReminders(raw) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    fun addReminder(cat: String, text: String, jy: Int, jm: Int, jd: Int) {
-        val next = reminders.value + Reminder("r" + System.currentTimeMillis(), cat, text.trim(), jy, jm, jd)
+    fun addReminder(
+        cat: String, text: String, jy: Int, jm: Int, jd: Int,
+        hh: Int, mm: Int, offsetValue: Int, offsetUnit: String, sound: String,
+    ) {
+        val r = Reminder(
+            id = "r" + System.currentTimeMillis(), cat = cat, text = text.trim(),
+            jy = jy, jm = jm, jd = jd, hh = hh, mm = mm,
+            offsetValue = offsetValue, offsetUnit = offsetUnit, sound = sound,
+        )
+        val next = reminders.value + r
         viewModelScope.launch { store.setReminders(serializeReminders(next)) }
+        scheduleReminderAlarm(r)
+    }
+
+    /** تکمیل یادآور با یادداشت اختیاری — خط قرمز + انتقال به پایین */
+    fun completeReminder(id: String, note: String?) {
+        val next = reminders.value.map {
+            if (it.id == id) it.copy(note = note?.trim()?.takeIf { n -> n.isNotBlank() }) else it
+        }
+        viewModelScope.launch { store.setReminders(serializeReminders(next)) }
+        if (id !in notifDone.value) toggleNotifDone(id)
+    }
+
+    /** زمان‌بندی آلارم واقعی یادآور (AlarmManager + اعلان + صدا) */
+    private fun scheduleReminderAlarm(r: Reminder) {
+        try {
+            val ctx = getApplication<android.app.Application>()
+            val (gy, gm, gd) = ir.atiran.hamrah.viewer.utils.Jalali.toGregorian(r.jy, r.jm, r.jd)
+            val cal = java.util.Calendar.getInstance().apply {
+                set(gy, gm - 1, gd, r.hh, r.mm, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            var trigger = cal.timeInMillis - when (r.offsetUnit) {
+                "دقیقه" -> r.offsetValue * 60_000L
+                "ساعت" -> r.offsetValue * 3_600_000L
+                "روز" -> r.offsetValue * 86_400_000L
+                else -> 0L
+            }
+            if (trigger <= System.currentTimeMillis()) {
+                trigger = System.currentTimeMillis() + 60_000L
+            }
+            val am = ctx.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+            val intent = android.content.Intent(ctx, ir.atiran.hamrah.viewer.utils.ReminderReceiver::class.java)
+                .putExtra("text", r.text)
+                .putExtra("cat", r.cat)
+                .putExtra("sound", r.sound)
+                .putExtra("rid", r.id.hashCode())
+            val pi = android.app.PendingIntent.getBroadcast(
+                ctx, r.id.hashCode(), intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            )
+            if (android.os.Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
+                am.setWindow(android.app.AlarmManager.RTC_WAKEUP, trigger, 10 * 60_000L, pi)
+            } else {
+                am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, trigger, pi)
+            }
+        } catch (_: Throwable) {
+            // زمان‌بندی نشد ولی یادآور خودش در فهرست هست
+        }
     }
 
     /**
@@ -326,7 +404,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openDemo() {
         screen = Screen.Demo
-        // پسته ورود کاربر را می‌شمارد تا دفعه بعد شخصی سلام کند
+        // فندق ورود کاربر را می‌شمارد تا دفعه بعد شخصی سلام کند
         updateAi { it.copy(visits = it.visits + 1) }
     }
 

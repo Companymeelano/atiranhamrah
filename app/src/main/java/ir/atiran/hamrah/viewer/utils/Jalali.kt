@@ -60,6 +60,43 @@ object Jalali {
     fun fa(v: String): String =
         v.map { if (it in '0'..'9') ('۰' + (it - '0')) else it }.joinToString("")
 
+    /** شمسی → میلادی — با تصحیح تدریجی روی خروجی fromGregorian (همیشه دقیق) */
+    fun toGregorian(jy: Int, jm: Int, jd: Int): Triple<Int, Int, Int> {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(jy + 621, jm - 1, jd, 12, 0, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        var guard = 0
+        while (guard++ < 45) {
+            val t = fromGregorian(
+                cal.get(java.util.Calendar.YEAR),
+                cal.get(java.util.Calendar.MONTH) + 1,
+                cal.get(java.util.Calendar.DAY_OF_MONTH),
+            )
+            val cmp = compare(t, Triple(jy, jm, jd))
+            when {
+                cmp == 0 -> return Triple(
+                    cal.get(java.util.Calendar.YEAR),
+                    cal.get(java.util.Calendar.MONTH) + 1,
+                    cal.get(java.util.Calendar.DAY_OF_MONTH),
+                )
+                cmp < 0 -> cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+                else -> cal.add(java.util.Calendar.DAY_OF_MONTH, -1)
+            }
+        }
+        return Triple(
+            cal.get(java.util.Calendar.YEAR),
+            cal.get(java.util.Calendar.MONTH) + 1,
+            cal.get(java.util.Calendar.DAY_OF_MONTH),
+        )
+    }
+
+    /** مقایسه دو تاریخ شمسی */
+    private fun compare(a: Triple<Int, Int, Int>, b: Triple<Int, Int, Int>): Int = when {
+        a.first != b.first -> a.first - b.first
+        a.second != b.second -> a.second - b.second
+        else -> a.third - b.third
+    }
+
     /** «۱۷ شهریور ۱۴۰۵» */
     fun format(jy: Int, jm: Int, jd: Int): String =
         fa(jd.toString()) + " " + monthNames[(jm - 1).coerceIn(0, 11)] + " " + fa(jy.toString())
