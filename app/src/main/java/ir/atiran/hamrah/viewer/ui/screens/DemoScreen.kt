@@ -632,10 +632,11 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onOpenMapping: ()
         cnt("customers", smap.customers)
         cnt("products", smap.products)
         cnt("checks", smap.checks)
-        if (smap.invoices != null) {
-            val t = try { vm.realTableFor(smap.invoices, 5) } catch (_: Throwable) { null }
+        val invRef = smap.invoices
+        if (invRef != null) {
+            val t = try { vm.realTableFor(invRef, 5) } catch (_: Throwable) { null }
             val roles = t?.let { TableHeuristics.detectRoles(it.cols) }
-            val sum = vm.realSumFor(smap.invoices, roles?.amountCol)
+            val sum = vm.realSumFor(invRef, roles?.amountCol)
             out["invoices_sum"] = sum?.let { TableHeuristics.faMoney(it) } ?: "—"
         }
         liveStats = out
@@ -2164,7 +2165,7 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddRe
     LaunchedEffect(invRef) {
         latestRows = if (invRef != null) {
             try {
-                val t = vm.realTableFor(invRef, 5)
+                val t = vm.realTableFor(invRef, 5) ?: return@LaunchedEffect
                 val roles = TableHeuristics.detectRoles(t.cols)
                 vm.realLatestFor(invRef, roles.dateCol, 6).mapIndexed { i, r ->
                     InboxRow(
@@ -3434,7 +3435,7 @@ private fun RealTopChart(vm: AppViewModel, ref: String?, title: String) {
     var items by remember(ref) { mutableStateOf<List<P3>?>(null) }
     LaunchedEffect(ref) {
         items = try {
-            val t = vm.realTableFor(ref, 5)
+            val t = vm.realTableFor(ref, 5) ?: return@LaunchedEffect
             val roles = TableHeuristics.detectRoles(t.cols)
             vm.realTopFor(ref, roles.amountCol, 5).mapNotNull { r ->
                 val n = TableHeuristics.parseNum(r.value(roles.amountCol)) ?: return@mapNotNull null
