@@ -18,8 +18,56 @@ import ir.atiran.hamrah.viewer.ui.components.MotionFx
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
+
+/** یادآور شخصی کاربر — هشدار بر پایه تقویم شمسی */
+data class Reminder(
+    val id: String,
+    val cat: String,
+    val text: String,
+    val jy: Int,
+    val jm: Int,
+    val jd: Int,
+)
+
+/** سریال‌سازی یادآورها به JSON — امن برای هر متنی */
+private fun serializeReminders(list: List<Reminder>): String {
+    val arr = JSONArray()
+    list.forEach { r ->
+        arr.put(
+            JSONObject().apply {
+                put("id", r.id)
+                put("cat", r.cat)
+                put("text", r.text)
+                put("y", r.jy)
+                put("m", r.jm)
+                put("d", r.jd)
+            }
+        )
+    }
+    return arr.toString()
+}
+
+private fun parseReminders(raw: String): List<Reminder> = try {
+    val arr = JSONArray(raw)
+    (0 until arr.length()).map { i ->
+        val o = arr.getJSONObject(i)
+        Reminder(
+            id = o.optString("id", ""),
+            cat = o.optString("cat", "سایر"),
+            text = o.optString("text", ""),
+            jy = o.optInt("y", 1404),
+            jm = o.optInt("m", 1).coerceIn(1, 12),
+            jd = o.optInt("d", 1).coerceIn(1, 31),
+        )
+    }.filter { it.id.isNotBlank() && it.text.isNotBlank() }
+} catch (_: Throwable) {
+    emptyList()
+}
 
 sealed class Screen {
     /** در حال اتصال خودکار اولیه */
@@ -131,6 +179,45 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** ذخیره چیدمان شخصی داشبورد */
     fun setHeroOrder(order: List<Int>) {
         viewModelScope.launch { store.setHeroOrder(order.joinToString(",")) }
+    }
+
+    /** چارت‌های منتخب کاربر در نمای کلی — استودیو چارت */
+    val myCharts = store.myCharts
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setMyCharts(ids: List<String>) {
+        viewModelScope.launch { store.setMyCharts(ids.joinToString(",")) }
+    }
+
+    /** هشدارهای دیده‌شده — شمارنده نشان مرکز توجه */
+    val alertSeen = store.alertSeen
+        .map { raw -> raw.split(",").filter { it.isNotBlank() }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    fun markAlertsSeen(ids: Collection<String>) {
+        val next = alertSeen.value + ids
+        viewModelScope.launch { store.setAlertSeen(next.joinToString(",")) }
+    }
+
+    /** اعلان‌های انجام‌شده (خط‌خورده و منتقل به پایین) */
+    val notifDone = store.notifDone
+        .map { raw -> raw.split(",").filter { it.isNotBlank() }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    fun toggleNotifDone(id: String) {
+        val cur = notifDone.value
+        val next = if (id in cur) cur - id else cur + id
+        viewModelScope.launch { store.setNotifDone(next.joinToString(",")) }
+    }
+
+    /** یادآورهای شخصی کاربر — بر پایه تقویم شمسی */
+    val reminders = store.reminders
+        .map { raw -> parseReminders(raw) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun addReminder(cat: String, text: String, jy: Int, jm: Int, jd: Int) {
+        val next = reminders.value + Reminder("r" + System.currentTimeMillis(), cat, text.trim(), jy, jm, jd)
+        viewModelScope.launch { store.setReminders(serializeReminders(next)) }
     }
 
     /**

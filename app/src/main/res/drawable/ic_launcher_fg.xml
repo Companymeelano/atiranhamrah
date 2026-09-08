@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- آیکون M•REPORT — M سه‌بعدی چشمگیر با پالت اُبسیدین: بنفش الکتریکی + یخ -->
+<!-- آیکون M•REPORT — پسته سه‌بعدی بامزه: پوسته بادامی با گرادیان واقعی،
+     مغز سبز خندان با چشمک تک‌چشمی، لپ‌های گیج، دهان خنده با زبان،
+     پاپیون بنفش برند و برگچه سرش — روی اُبسیدین عمیق -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -7,114 +9,150 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- لایه ۱: دیسک نور پشت M — هاله بنفش الکتریکی -->
-    <path android:pathData="M54,34 m-27,0 a27,27 0 1 0 54,0 a27,27 0 1 0 -54,0">
+    <!-- هاله نور گرم پشت پسته — عمق با نور، نه سایه -->
+    <path android:pathData="M54,57 m-33,0 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="radial"
                 android:centerX="54"
-                android:centerY="34"
-                android:gradientRadius="27">
-                <item android:offset="0.0" android:color="#3D8A76E8" />
-                <item android:offset="1.0" android:color="#008A76E8" />
+                android:centerY="57"
+                android:gradientRadius="33">
+                <item android:offset="0.0" android:color="#38E6CB98" />
+                <item android:offset="1.0" android:color="#00E6CB98" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- لایه ۲: دیسک نور پشت نقطه برند — هاله یخ -->
-    <path android:pathData="M73,54 m-12,0 a12,12 0 1 0 24,0 a12,12 0 1 0 -24,0">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="radial"
-                android:centerX="73"
-                android:centerY="54"
-                android:gradientRadius="12">
-                <item android:offset="0.0" android:color="#4D9BD4FF" />
-                <item android:offset="1.0" android:color="#009BD4FF" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    <!-- پسته — مقیاس ۰.۶ و وسط‌چین در ناحیه امن آیکون تطبیقی -->
+    <group
+        android:scaleX="0.6"
+        android:scaleY="0.6"
+        android:translateX="24"
+        android:translateY="26">
 
-    <!-- لایه ۳: وجه عمق (اکستروژن) — دو پله پایین‌تر برای عمق چندلایه -->
-    <path
-        android:pathData="M36.2,72.6 L36.2,44.6 L52.2,60.6 L68.2,44.6 L68.2,72.6"
-        android:strokeWidth="7.5"
-        android:strokeColor="#66110D2E"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M33.6,70.6 L33.6,42.6 L49.6,58.6 L65.6,42.6 L65.6,70.6"
-        android:strokeWidth="7.5"
-        android:strokeColor="#FF2A2252"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        <!-- پوسته بادامی — گرادیان عمودی بژ واقعی -->
+        <path
+            android:pathData="M50,5 C79,15 89,48 74,75 C64,91 36,91 26,75 C11,48 21,15 50,5 Z"
+            android:strokeWidth="1.7">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="50"
+                    android:startY="5"
+                    android:endX="50"
+                    android:endY="92">
+                    <item android:offset="0.0" android:color="#FFE6CB98" />
+                    <item android:offset="0.5" android:color="#FFD2AE79" />
+                    <item android:offset="1.0" android:color="#FFB08A55" />
+                </gradient>
+            </aapt:attr>
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="50"
+                    android:startY="5"
+                    android:endX="50"
+                    android:endY="92">
+                    <item android:offset="0.0" android:color="#FF9A7A4C" />
+                    <item android:offset="1.0" android:color="#FF8A6B42" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- لایه ۴: بدنه اصلی M — گرادیان اُبسیدین (بنفش یخی → الکتریکی → یخ) -->
-    <path
-        android:pathData="M31,68 L31,40 L47,56 L63,40 L63,68"
-        android:strokeWidth="7.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round">
-        <aapt:attr name="android:strokeColor">
-            <gradient
-                android:type="linear"
-                android:startX="31"
-                android:startY="37"
-                android:endX="82"
-                android:endY="71">
-                <item android:offset="0.0" android:color="#FFF6F2FF" />
-                <item android:offset="0.38" android:color="#FFC9BAFF" />
-                <item android:offset="0.72" android:color="#FFB4A0FF" />
-                <item android:offset="1.0" android:color="#FF9BD4FF" />
-            </gradient>
-        </aapt:attr>
-    </path>
+        <!-- شکاف پوسته — خط باریک بالا -->
+        <path
+            android:pathData="M50,6 Q46,16 50.5,26"
+            android:strokeColor="#FF8A6B42"
+            android:strokeWidth="2.1"
+            android:strokeLineCap="round" />
 
-    <!-- لایه ۵: برجستگی بالایی — نور خوردگی روی شانه M -->
-    <path
-        android:pathData="M31,44.2 L31,40 L35,44.2"
-        android:strokeWidth="2.4"
-        android:strokeColor="#B0FFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M47,56 L63,40 L63,44.2"
-        android:strokeWidth="2.4"
-        android:strokeColor="#80FFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        <!-- برگچه سر پسته -->
+        <path
+            android:pathData="M50,8 Q57,0.5 66,4.5 Q58.5,11.5 50,8 Z"
+            android:fillColor="#FF6F9A4E" />
+        <path
+            android:pathData="M50,9 L48,4.5"
+            android:strokeColor="#FF5D7A40"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round" />
 
-    <!-- هسته نور منجمد — خط نور داخل بدنه -->
-    <path
-        android:pathData="M31,68 L31,40 L47,56 L63,40 L63,68"
-        android:strokeWidth="2"
-        android:strokeColor="#2EFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        <!-- مغز سبز — صحنه صورت با گرادیان شعاعی -->
+        <path android:pathData="M25,39 a25,19 0 1,0 50,0 a25,19 0 1,0 -50,0">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="50"
+                    android:centerY="33"
+                    android:gradientRadius="27">
+                    <item android:offset="0.0" android:color="#FFBBD68F" />
+                    <item android:offset="0.6" android:color="#FF8FB260" />
+                    <item android:offset="1.0" android:color="#FF7A9A50" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- لایه ۶: نقطه برند (•) با گرادیان الکتریکی → یخ -->
-    <path android:pathData="M72.5,49.25 a4.75,4.75 0 1 0 0,9.5 a4.75,4.75 0 1 0 0,-9.5">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="68"
-                android:startY="50"
-                android:endX="78"
-                android:endY="58">
-                <item android:offset="0.0" android:color="#FFD2C6FF" />
-                <item android:offset="0.6" android:color="#FFB4A0FF" />
-                <item android:offset="1.0" android:color="#FF9BD4FF" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    <!-- هسته نور نقطه برند -->
-    <path
-        android:pathData="M72.5,52.1 a1.8,1.8 0 1 0 0,3.6 a1.8,1.8 0 1 0 0,-3.6"
-        android:fillColor="#CCEBFFFF" />
-    <!-- حلقه ظریف دور نقطه -->
-    <path
-        android:pathData="M72.5,47.85 a5.65,5.65 0 1 0 0,11.3 a5.65,5.65 0 1 0 0,-11.3"
-        android:strokeWidth="0.9"
-        android:strokeColor="#599BD4FF"
-        android:fillColor="#00000000" />
+        <!-- لپ‌های گیج -->
+        <path
+            android:pathData="M30.4,41 a4.2,4.2 0 1,0 8.4,0 a4.2,4.2 0 1,0 -8.4,0"
+            android:fillColor="#61E2906B" />
+        <path
+            android:pathData="M61.2,41 a4.2,4.2 0 1,0 8.4,0 a4.2,4.2 0 1,0 -8.4,0"
+            android:fillColor="#61E2906B" />
+
+        <!-- چشم چپ — باز با برق چشم -->
+        <path
+            android:pathData="M36.6,35 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0"
+            android:fillColor="#FFFCF8EE" />
+        <path
+            android:pathData="M38.8,35 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0"
+            android:fillColor="#FF3A2E1B" />
+        <path
+            android:pathData="M39.3,34 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"
+            android:fillColor="#D9FFFFFF" />
+
+        <!-- چشم راست — چشمک خندان! -->
+        <path
+            android:pathData="M55,35.4 Q59,32 63,35.4"
+            android:strokeColor="#FF3A2E1B"
+            android:strokeWidth="1.9"
+            android:strokeLineCap="round" />
+
+        <!-- ابروها — راستی بالا رفته از توّقی! -->
+        <path
+            android:pathData="M37.2,28.5 Q41,25.6 44.8,28.5"
+            android:strokeColor="#FF3A2E1B"
+            android:strokeWidth="1.7"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M55.2,25.3 Q59,22.4 62.8,25.3"
+            android:strokeColor="#FF3A2E1B"
+            android:strokeWidth="1.7"
+            android:strokeLineCap="round" />
+
+        <!-- دهان خنده باز + زبان -->
+        <path
+            android:pathData="M43.5,41.5 Q50,49.5 56.5,41.5 Z"
+            android:fillColor="#FF3A2E1B" />
+        <path
+            android:pathData="M47,45.4 Q50,49.6 53,45.4 Z"
+            android:fillColor="#FFE2906B" />
+
+        <!-- پاپیون بنفش برند — با هایلایت سفید -->
+        <path
+            android:pathData="M50,62 L42.5,57.6 Q40.8,62 42.5,66.4 Z"
+            android:fillColor="#EB8A76E8"
+            android:strokeColor="#1A000000"
+            android:strokeWidth="0.7" />
+        <path
+            android:pathData="M50,62 L57.5,57.6 Q59.2,62 57.5,66.4 Z"
+            android:fillColor="#EB8A76E8"
+            android:strokeColor="#1A000000"
+            android:strokeWidth="0.7" />
+        <path
+            android:pathData="M48.1,62 a1.9,1.9 0 1,0 3.8,0 a1.9,1.9 0 1,0 -3.8,0"
+            android:fillColor="#FF8A76E8" />
+        <path
+            android:pathData="M48.6,61.2 a0.7,0.7 0 1,0 1.4,0 a0.7,0.7 0 1,0 -1.4,0"
+            android:fillColor="#80FFFFFF" />
+    </group>
 </vector>

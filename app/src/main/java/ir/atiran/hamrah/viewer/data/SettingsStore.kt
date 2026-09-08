@@ -52,6 +52,10 @@ class SettingsStore(private val context: Context) {
         val aiMode = stringPreferencesKey("aiMode")
         val aiDomains = stringPreferencesKey("aiDomains")
         val aiVisits = intPreferencesKey("aiVisits")
+        val myCharts = stringPreferencesKey("myCharts")
+        val alertSeen = stringPreferencesKey("alertSeen")
+        val notifDone = stringPreferencesKey("notifDone")
+        val reminders = stringPreferencesKey("reminders")
     }
 
     /** تم انتخابی کاربر (۰ تا ۳) */
@@ -114,6 +118,34 @@ class SettingsStore(private val context: Context) {
             it[Keys.aiDomains] = s.domains.joinToString(",")
             it[Keys.aiVisits] = s.visits
         }
+    }
+
+    /** چارت‌های منتخب کاربر در نمای کلی — مثل "sales_week,checks_status" */
+    val myCharts: Flow<String?> = context.dataStore.data.map { p -> p[Keys.myCharts] }
+
+    suspend fun setMyCharts(v: String) {
+        context.dataStore.edit { it[Keys.myCharts] = v }
+    }
+
+    /** هشدارهایی که کاربر دیده است — برای شمارنده نشان مرکز توجه */
+    val alertSeen: Flow<String> = context.dataStore.data.map { p -> p[Keys.alertSeen] ?: "" }
+
+    suspend fun setAlertSeen(v: String) {
+        context.dataStore.edit { it[Keys.alertSeen] = v }
+    }
+
+    /** اعلان‌هایی که کاربر انجام‌شده علامت زده (خط‌خورده) */
+    val notifDone: Flow<String> = context.dataStore.data.map { p -> p[Keys.notifDone] ?: "" }
+
+    suspend fun setNotifDone(v: String) {
+        context.dataStore.edit { it[Keys.notifDone] = v }
+    }
+
+    /** یادآورهای شخصی کاربر — JSON آرایه‌ای از یادآورها */
+    val reminders: Flow<String> = context.dataStore.data.map { p -> p[Keys.reminders] ?: "[]" }
+
+    suspend fun setReminders(v: String) {
+        context.dataStore.edit { it[Keys.reminders] = v }
     }
 
     val settings: Flow<DbSettings> = context.dataStore.data.map { p ->

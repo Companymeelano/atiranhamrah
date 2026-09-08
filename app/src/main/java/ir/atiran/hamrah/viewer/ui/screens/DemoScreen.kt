@@ -92,6 +92,7 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -113,13 +114,14 @@ import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.AiBrain
+import ir.atiran.hamrah.viewer.utils.Jalali
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 // ============================================================ داده نمونه
-private val tabs = listOf("نمای کلی", "مشتریان", "کالاها", "گزارش‌ها", "هشدارها", "اعلان‌ها")
+private val tabs = listOf("نمای کلی", "مشتریان", "کالاها", "خزانه", "گزارش‌ها", "اعلان‌ها")
 
 private val flowDates = listOf(
     "۱ شهریور", "۳ شهریور", "۵ شهریور", "۷ شهریور", "۹ شهریور", "۱۱ شهریور",
@@ -195,20 +197,19 @@ private val activityByRange = mapOf(
     ),
 )
 
-private data class AlertCard(val title: String, val count: String, val desc: String, val color: Color)
-private val attentionCards = listOf(
-    AlertCard("چک سررسید", "۲ مورد", "چک‌هایی که امروز یا فردا سررسید می‌شوند", Color(0xFFFF6B6B)),
-    AlertCard("مطالبات", "۸ مشتری", "مطالبات معوق بیش از ۶۰ روز", Color(0xFFFFA94D)),
-    AlertCard("پیگیری مشتری", "۵ مورد", "مشتریان نیازمند تماس پیگیری", Color(0xFFFFD43B)),
+private data class Notif(val id: String, val cat: String, val title: String, val sub: String, val time: String, val color: Color)
+private val notifs = listOf(
+    Notif("n1", "چک", "چک مشتری «فروشگاه زرین»", "سررسید امروز — ۱۲:۴۵", "۱۲:۴۵", Color(0xFFFF6B6B)),
+    Notif("n2", "مالی", "وصول ۴۵٬۰۰۰٬۰۰۰ تومان", "از حساب هایپر طلایی", "۱۱:۲۰", Color(0xFF69DB7C)),
+    Notif("n3", "مهم", "گزارش ماهانه آماده شد", "گزارش گردش حساب شهریور", "۱۰:۰۵", Color(0xFFFFD43B)),
+    Notif("n4", "مشتری", "مشتری جدید ثبت شد", "سوپرمارکت بهار — توسط علی", "۰۹:۳۰", Color(0xFF74C0FC)),
+    Notif("n5", "چک", "چک مشتری «پخش نگین»", "سررسید فردا", "دیروز", Color(0xFFFF6B6B)),
 )
 
-private data class Notif(val cat: String, val title: String, val sub: String, val time: String, val color: Color)
-private val notifs = listOf(
-    Notif("چک", "چک مشتری «فروشگاه زرین»", "سررسید امروز — ۱۲:۴۵", "۱۲:۴۵", Color(0xFFFF6B6B)),
-    Notif("مالی", "وصول ۴۵٬۰۰۰٬۰۰۰ تومان", "از حساب هایپر طلایی", "۱۱:۲۰", Color(0xFF69DB7C)),
-    Notif("مهم", "گزارش ماهانه آماده شد", "گزارش گردش حساب شهریور", "۱۰:۰۵", Color(0xFFFFD43B)),
-    Notif("مشتری", "مشتری جدید ثبت شد", "سوپرمارکت بهار — توسط علی", "۰۹:۳۰", Color(0xFF74C0FC)),
-    Notif("چک", "چک مشتری «پخش نگین»", "سررسید فردا", "دیروز", Color(0xFFFF6B6B)),
+/** ردیف صندوق ورودی — یادآور شخصی یا اعلان سیستمی */
+private data class InboxRow(
+    val id: String, val cat: String, val title: String, val sub: String,
+    val time: String, val color: Color, val isReminder: Boolean,
 )
 
 private val reportTypes = listOf("مشتریان", "کالاها", "موجودی", "چک", "گردش حساب", "مطالبات")
@@ -244,7 +245,12 @@ fun DemoScreen(vm: AppViewModel) {
     var expSheetOpen by remember { mutableStateOf(false) }
     var aiChatOpen by remember { mutableStateOf(false) }
     var aiSettingsOpen by remember { mutableStateOf(false) }
+    var alertsOpen by remember { mutableStateOf(false) }
+    var reminderOpen by remember { mutableStateOf(false) }
     var greetVisible by remember { mutableStateOf(false) }
+    // شمارنده هشدارهای تازه — با باز کردن مرکز توجه صفر می‌شود
+    val alertSeen by vm.alertSeen.collectAsState()
+    val unseen = unseenAlertCount(alertSeen)
     // پسته بعد از ورود سلام می‌کند (فقط اگر فعال باشد)
     LaunchedEffect(vm.ai.enabled) {
         if (vm.ai.enabled) {
@@ -289,25 +295,53 @@ fun DemoScreen(vm: AppViewModel) {
                     }
                 },
                 actions = {
-                    // نوار کنترل: جستجو + همگام‌سازی آتیران + شخصیت بصری + تجربه رابط
+                    // نوار کنترل: مرکز توجه + جستجو + همگام‌سازی + شخصیت بصری + تجربه رابط
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
                         modifier = Modifier.padding(end = 4.dp),
                     ) {
-                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند پسته", size = 33.dp, tint = Color(0xFF8FB260)) {
+                        // مرکز توجه — نشان سه‌بعدی با شمارنده هشدارهای تازه
+                        Box {
+                            MrOrbButton(MrIcons.Alerts, "مرکز توجه", size = 31.dp, tint = Color(0xFFFF6B6B)) {
+                                alertsOpen = true; SoundFx.soft()
+                            }
+                            if (unseen > 0) {
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .absoluteOffset(x = (-2).dp, y = (-2).dp)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(Color(0xFFFF8787), Color(0xFFE8590C))
+                                            )
+                                        )
+                                        .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(50))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                                ) {
+                                    Text(
+                                        faNum(unseen.toString()),
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Black,
+                                    )
+                                }
+                            }
+                        }
+                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند پسته", size = 31.dp, tint = Color(0xFF8FB260)) {
                             if (vm.ai.enabled) aiChatOpen = true else aiSettingsOpen = true
                             SoundFx.soft()
                         }
-                        MrOrbButton(MrIcons.Search, "جستجوی هوشمند", size = 33.dp) { paletteOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Search, "جستجوی هوشمند", size = 31.dp) { paletteOpen = true; SoundFx.soft() }
                         MrOrbButton(
                             MrIcons.Sync, "اتصال و همگام‌سازی آتیران",
-                            size = 33.dp,
+                            size = 31.dp,
                             tint = if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
                             active = refreshing,
                         ) { syncSheetOpen = true; SoundFx.soft() }
-                        MrOrbButton(MrIcons.Theme, "شخصیت بصری", size = 33.dp, tint = extras.gold) { themeSheetOpen = true; SoundFx.soft() }
-                        MrOrbButton(MrIcons.Waves, "تجربه رابط", size = 33.dp, tint = extras.accent) { expSheetOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Theme, "شخصیت بصری", size = 31.dp, tint = extras.gold) { themeSheetOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Waves, "تجربه رابط", size = 31.dp, tint = extras.accent) { expSheetOpen = true; SoundFx.soft() }
                     }
                 },
             )
@@ -333,9 +367,9 @@ fun DemoScreen(vm: AppViewModel) {
                     0 -> OverviewTab(vm, refreshing)
                     1 -> CustomersTab { customerOpen = it }
                     2 -> ProductsTab { productOpen = it }
-                    3 -> ReportsTab()
-                    4 -> AlertsTab(vm)
-                    else -> NotificationsTab(vm) { tab = 4 }
+                    3 -> FinanceTab()
+                    4 -> ReportsTab()
+                    else -> NotificationsTab(vm, onOpenAlerts = { alertsOpen = true }, onAddReminder = { reminderOpen = true })
                 }
                 Text(
                     "★ داده‌های این بخش صرفاً برای نمایش قابلیت‌های M•REPORT است",
@@ -367,6 +401,7 @@ fun DemoScreen(vm: AppViewModel) {
             onOpenCustomer = { paletteOpen = false; customerOpen = it },
             onOpenProduct = { paletteOpen = false; tab = 2; productOpen = it },
             onGoTab = { paletteOpen = false; tab = it },
+            onOpenAlerts = { paletteOpen = false; alertsOpen = true },
         )
     }
 
@@ -404,6 +439,12 @@ fun DemoScreen(vm: AppViewModel) {
     if (aiSettingsOpen) {
         AiSettingsSheet(vm) { aiSettingsOpen = false }
     }
+    if (alertsOpen) {
+        AlertsCenterSheet(vm, onDismiss = { alertsOpen = false })
+    }
+    if (reminderOpen) {
+        AddReminderSheet(vm, onDismiss = { reminderOpen = false })
+    }
 }
 
 // ============================================================ نوار ناوبری اصلی
@@ -421,7 +462,7 @@ private fun MrTabBar(
     val extras = LocalThemeExtras.current
     val icons = listOf(
         MrIcons.Overview, MrIcons.Customers, MrIcons.Products,
-        MrIcons.Reports, MrIcons.Alerts, MrIcons.Notifications,
+        MrIcons.Bank, MrIcons.Reports, MrIcons.Notifications,
     )
     Row(
         modifier = modifier
@@ -658,6 +699,9 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
             if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
+
+    // ---------- چارت‌های من — استودیو شخصی‌سازی داشبورد ----------
+    MyChartsSection(vm)
 
     // ---------- چارت اصلی: روند مطالبات و وصول طلب ----------
     Section("روند مطالبات و وصول طلب — ۸ ماه اخیر") {
@@ -1979,114 +2023,25 @@ private fun SummaryRow(label: String, value: String) {
     }
 }
 
-// ============================================================ تب هشدارها (مرکز توجه)
-@Composable
-private fun AlertsTab(vm: AppViewModel) {
-    val scheme = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // نشان سه‌بعدی مرکز توجه — با هاله نور
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .background(
-                        Brush.radialGradient(listOf(Color(0xFFFF6B6B).copy(alpha = 0.30f), Color.Transparent)),
-                        CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    Modifier
-                        .size(27.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color(0xFFFF6B6B).copy(alpha = 0.32f), Color(0xFFFF6B6B).copy(alpha = 0.10f))
-                            )
-                        )
-                        .border(1.dp, Color(0xFFFF6B6B).copy(alpha = 0.55f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(MrIcons.Alerts, contentDescription = null, tint = statusTone(Color(0xFFFF6B6B)), modifier = Modifier.size(14.dp))
-                }
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "مرکز توجه",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-            )
-        }
-        Text(
-            "۳ مورد نیازمند توجه شماست",
-            style = MaterialTheme.typography.bodyMedium,
-            color = scheme.onSurfaceVariant,
-        )
-        attentionCards.forEach { a ->
-            GlassCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // نشان سه‌بعدی هماهنگ با نوع هشدار + نبض آرام
-                    val tone = statusTone(a.color)
-                    Box(
-                        Modifier
-                            .size(42.dp)
-                            .background(
-                                Brush.radialGradient(listOf(a.color.copy(alpha = 0.28f), Color.Transparent)),
-                                CircleShape,
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(
-                            Modifier
-                                .size(31.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(a.color.copy(alpha = 0.30f), a.color.copy(alpha = 0.10f))
-                                    )
-                                )
-                                .border(1.dp, a.color.copy(alpha = 0.55f), CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                when (a.title) {
-                                    "چک سررسید" -> MrIcons.Checks
-                                    "مطالبات" -> MrIcons.Receivables
-                                    else -> MrIcons.Customers
-                                },
-                                contentDescription = null,
-                                tint = tone,
-                                modifier = Modifier.size(15.dp),
-                            )
-                        }
-                        if (vm.experience.motion) {
-                            CalmPulse(a.color, dotSize = 6.dp)
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(a.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(a.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-                    }
-                    Text(
-                        a.count,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
-                        color = tone,
-                    )
-                }
-            }
-        }
-    }
-}
-
 // ============================================================ تب اعلان‌ها (Inbox)
 @Composable
-private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
+private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit, onAddReminder: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     var filter by remember { mutableStateOf("همه") }
-    val cats = listOf("همه", "مهم", "مالی", "چک", "مشتری")
+    val cats = listOf("همه", "یادآور", "مهم", "مالی", "چک", "مشتری")
+    val done by vm.notifDone.collectAsState()
+    val reminders by vm.reminders.collectAsState()
+
+    // صندوق ورودی: یادآورهای شخصی کاربر + اعلان‌های سیستمی — انجام‌شده‌ها پایین می‌روند
+    val all = reminders.map { r ->
+        InboxRow(r.id, "یادآور", r.text, "موضوع: " + r.cat, Jalali.format(r.jy, r.jm, r.jd), scheme.primary, true)
+    } + notifs.map { n ->
+        InboxRow(n.id, n.cat, n.title, n.sub, n.time, n.color, false)
+    }
+    val list = all
+        .filter { filter == "همه" || it.cat == filter }
+        .sortedBy { it.id in done }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2116,12 +2071,66 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
                 }
             }
             Spacer(Modifier.width(8.dp))
-            Text(
-                "اعلان‌ها",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "اعلان‌ها",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    list.count { it.id !in done }.toString() + " مورد در انتظار — " + done.size.toString() + " مورد انجام‌شده",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
         }
+
+        // دکمه یادآور جدید — هماهنگ با تم، بر پایه تقویم شمسی
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(scheme.primary.copy(alpha = 0.18f), scheme.primary.copy(alpha = 0.07f))
+                    )
+                )
+                .border(1.dp, scheme.primary.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .clickable { onAddReminder(); SoundFx.soft() }
+                .padding(horizontal = 13.dp, vertical = 11.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(scheme.primary.copy(alpha = 0.32f), scheme.primary.copy(alpha = 0.12f))
+                        )
+                    )
+                    .border(1.dp, scheme.primary.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(MrIcons.Reminder, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(16.dp))
+            }
+            Column {
+                Text("یادآور جدید", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "هشدار شخصی بر پایه تقویم شمسی — با موضوع و متن دلخواه",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Text(
+            "برای «انجام‌شدن» اعلان را لمس کنید — خط می‌خورد و پایین می‌رود؛ دوباره لمس کنید تا برگردد",
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.onSurfaceVariant,
+        )
+
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2130,21 +2139,28 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
                 MTab(c, filter == c) { filter = c; SoundFx.soft() }
             }
         }
-        val list = notifs.filter { filter == "همه" || it.cat == filter }
+
         if (list.isEmpty()) {
             ir.atiran.hamrah.viewer.ui.components.EmptyBox(
                 text = "همه‌چیز مرتب است",
                 subtitle = "در این دسته اعلان جدیدی وجود ندارد",
             )
         }
+
         list.forEach { n ->
+            val isDone = n.id in done
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(extras.glass)
-                    .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+                    .background(extras.glass.copy(alpha = if (isDone) 0.55f else 1f))
+                    .border(
+                        1.dp,
+                        if (isDone) extras.hairline.copy(alpha = 0.5f) else extras.hairline,
+                        RoundedCornerShape(16.dp),
+                    )
+                    .clickable { vm.toggleNotifDone(n.id); SoundFx.soft() }
                     .padding(horizontal = 12.dp, vertical = 11.dp),
             ) {
                 // نشان سه‌بعدی هماهنگ با دسته اعلان
@@ -2175,6 +2191,7 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
                                 "چک" -> MrIcons.Checks
                                 "مالی" -> MrIcons.Receivables
                                 "مهم" -> MrIcons.Alerts
+                                "یادآور" -> MrIcons.Reminder
                                 else -> MrIcons.Customers
                             },
                             contentDescription = null,
@@ -2185,23 +2202,48 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(n.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                    Text(n.sub, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    Text(
+                        n.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isDone) scheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                        textDecoration = if (isDone) TextDecoration.LineThrough else null,
+                        maxLines = 1,
+                    )
+                    Text(
+                        n.sub,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(n.time, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                     Spacer(Modifier.height(3.dp))
-                    Text(
-                        "مشاهده",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = scheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(scheme.primary.copy(alpha = 0.10f))
-                            .clickable { SoundFx.soft(); onOpenAlerts() }
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
+                    if (n.isReminder) {
+                        Text(
+                            "یادآور من",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = scheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(scheme.primary.copy(alpha = 0.10f))
+                                .padding(horizontal = 10.dp, vertical = 3.dp),
+                        )
+                    } else {
+                        Text(
+                            "مشاهده",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = scheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(scheme.primary.copy(alpha = 0.10f))
+                                .clickable { SoundFx.soft(); onOpenAlerts() }
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                        )
+                    }
                 }
             }
         }
@@ -2224,6 +2266,7 @@ private fun CommandPalette(
     onOpenCustomer: (CustomerD) -> Unit,
     onOpenProduct: (P3) -> Unit,
     onGoTab: (Int) -> Unit,
+    onOpenAlerts: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
@@ -2231,12 +2274,13 @@ private fun CommandPalette(
 
     val items = listOf(
         // صفحه‌ها
-        SearchItem("نمای کلی", "داشبورد اصلی", "صفحه‌ها", MrIcons.Overview) { onGoTab(0) },
+        SearchItem("نمای کلی", "داشبورد اصلی و چارت‌های من", "صفحه‌ها", MrIcons.Overview) { onGoTab(0) },
         SearchItem("مشتریان", "فهرست و پرونده دیجیتال", "صفحه‌ها", MrIcons.Customers) { onGoTab(1) },
         SearchItem("کالاها", "موجودی و کارت کالا", "صفحه‌ها", MrIcons.Products) { onGoTab(2) },
-        SearchItem("گزارش‌ها", "Report Studio", "صفحه‌ها", MrIcons.Reports) { onGoTab(3) },
-        SearchItem("هشدارها", "مرکز توجه", "صفحه‌ها", MrIcons.Alerts) { onGoTab(4) },
-        SearchItem("اعلان‌ها", "صندوق ورودی", "صفحه‌ها", MrIcons.Notifications) { onGoTab(5) },
+        SearchItem("خزانه", "بانک‌ها، چک‌ها و اسناد مالی", "صفحه‌ها", MrIcons.Bank) { onGoTab(3) },
+        SearchItem("گزارش‌ها", "Report Studio", "صفحه‌ها", MrIcons.Reports) { onGoTab(4) },
+        SearchItem("هشدارها", "مرکز توجه", "صفحه‌ها", MrIcons.Alerts) { onOpenAlerts() },
+        SearchItem("اعلان‌ها", "صندوق ورودی و یادآورها", "صفحه‌ها", MrIcons.Notifications) { onGoTab(5) },
         // مشتریان
         *customersDemo.map {
             SearchItem(it.name, "پرونده ۳۶۰ مشتری — مانده " + it.balance, "مشتریان", MrIcons.Customers) { onOpenCustomer(it) }
@@ -2246,10 +2290,10 @@ private fun CommandPalette(
             SearchItem(it.name, "کارت کالا — سهم فروش " + it.v.toInt() + "٪", "کالاها", MrIcons.Products) { onOpenProduct(it) }
         }.toTypedArray(),
         // هشدارها و گزارش‌ها
-        SearchItem("چک‌های سررسید شده", "مرکز توجه — چک‌های سررسیدشده", "هشدارها و گزارش‌ها", MrIcons.Alerts) { onGoTab(4) },
-        SearchItem("مطالبات مشتریان", "گزارش وضعیت مطالبات", "هشدارها و گزارش‌ها", MrIcons.Reports) { onGoTab(3) },
-        SearchItem("گزارش موجودی انبار", "Report Studio", "هشدارها و گزارش‌ها", MrIcons.Reports) { onGoTab(3) },
-        SearchItem("گردش حساب", "گزارش گردش مالی", "هشدارها و گزارش‌ها", MrIcons.Trend) { onGoTab(3) },
+        SearchItem("چک‌های سررسید شده", "مرکز توجه — چک‌های سررسیدشده", "هشدارها و گزارش‌ها", MrIcons.Alerts) { onOpenAlerts() },
+        SearchItem("مطالبات مشتریان", "گزارش وضعیت مطالبات", "هشدارها و گزارش‌ها", MrIcons.Reports) { onGoTab(4) },
+        SearchItem("گزارش موجودی انبار", "Report Studio", "هشدارها و گزارش‌ها", MrIcons.Reports) { onGoTab(4) },
+        SearchItem("گردش حساب خزانه", "گردش مالی بانک‌ها و اسناد", "هشدارها و گزارش‌ها", MrIcons.Bank) { onGoTab(3) },
     )
     val filtered = items.filter {
         q.isBlank() || it.title.contains(q, true) || it.hint.contains(q, true) || it.group.contains(q, true)
