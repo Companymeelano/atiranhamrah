@@ -160,11 +160,32 @@ private val customersDemo = listOf(
 )
 
 private data class TimelineEntry(val when_: String, val title: String, val amount: String, val positive: Boolean)
-private val activity = listOf(
-    TimelineEntry("امروز", "فاکتور 10325", "+ 18,500,000", true),
-    TimelineEntry("۲ روز قبل", "دریافت", "− 10,000,000", false),
-    TimelineEntry("۵ روز قبل", "فاکتور 10302", "+ 7,800,000", true),
-    TimelineEntry("هفته قبل", "چک وصول شد", "− 22,000,000", false),
+
+/** گردش مشتری در سه بازه زمانی — فیلتر واقعی */
+private val activityByRange = mapOf(
+    "هفته" to listOf(
+        TimelineEntry("امروز", "فاکتور 10325", "+ ۱۸٬۵۰۰٬۰۰۰", true),
+        TimelineEntry("۲ روز قبل", "دریافت", "− ۱۰٬۰۰۰٬۰۰۰", false),
+        TimelineEntry("۵ روز قبل", "فاکتور 10302", "+ ۷٬۸۰۰٬۰۰۰", true),
+    ),
+    "ماه" to listOf(
+        TimelineEntry("امروز", "فاکتور 10325", "+ ۱۸٬۵۰۰٬۰۰۰", true),
+        TimelineEntry("۲ روز قبل", "دریافت", "− ۱۰٬۰۰۰٬۰۰۰", false),
+        TimelineEntry("۵ روز قبل", "فاکتور 10302", "+ ۷٬۸۰۰٬۰۰۰", true),
+        TimelineEntry("هفته قبل", "چک وصول شد", "− ۲۲٬۰۰۰٬۰۰۰", false),
+        TimelineEntry("۲ هفته قبل", "فاکتور 10288", "+ ۹٬۶۰۰٬۰۰۰", true),
+        TimelineEntry("۳ هفته قبل", "برگشتی کالا", "− ۳٬۱۰۰٬۰۰۰", false),
+    ),
+    "سال" to listOf(
+        TimelineEntry("امروز", "فاکتور 10325", "+ ۱۸٬۵۰۰٬۰۰۰", true),
+        TimelineEntry("۵ روز قبل", "فاکتور 10302", "+ ۷٬۸۰۰٬۰۰۰", true),
+        TimelineEntry("۲ هفته قبل", "فاکتور 10288", "+ ۹٬۶۰۰٬۰۰۰", true),
+        TimelineEntry("مرداد", "دریافت", "− ۴۵٬۰۰۰٬۰۰۰", false),
+        TimelineEntry("تیر", "فاکتور 10241", "+ ۳۲٬۰۰۰٬۰۰۰", true),
+        TimelineEntry("خرداد", "چک وصول شد", "− ۲۸٬۰۰۰٬۰۰۰", false),
+        TimelineEntry("اردیبهشت", "فاکتور 10210", "+ ۲۱٬۵۰۰٬۰۰۰", true),
+        TimelineEntry("فروردین", "دریافت", "− ۱۵٬۰۰۰٬۰۰۰", false),
+    ),
 )
 
 private data class AlertCard(val title: String, val count: String, val desc: String, val color: Color)
@@ -1616,20 +1637,6 @@ private fun ProductsTab(onOpen: (P3) -> Unit) {
                 list.forEach { p -> ProductCard(p, onOpen) }
             }
         }
-        Section("کاردکس و گردش — پسته اکبری") {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CardexRow(MrIcons.Trend, "۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", extras.positive)
-                CardexRow(MrIcons.Excel, "۰۳ شهریور", "فروش — هایپر طلایی", "−۸۵ کیلوگرم", scheme.error)
-                CardexRow(MrIcons.Excel, "۰۵ شهریور", "فروش — پخش نگین", "−۱۲۰ کیلوگرم", scheme.error)
-                CardexRow(MrIcons.Sync, "۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", extras.accent)
-                Text(
-                    "گردش ماهانه کالا",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                MicroArea(listOf(120f, 95f, 140f, 110f, 160f, 130f, 175f, 150f), scheme.primary)
-            }
-        }
     }
 }
 
@@ -1779,28 +1786,19 @@ private fun ReportsTab() {
             Text("نوع گزارش", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 reportTypes.forEachIndexed { i, t ->
-                    MTab(t, type == i) { type = i; SoundFx.soft() }
+                    ReportChip(t, type == i) { type = i; SoundFx.soft() }
                 }
             }
             Text("فیلترها", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 reportFilters.forEach { f ->
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(extras.glass)
-                            .border(1.dp, extras.hairline, RoundedCornerShape(50))
-                            .clickable { SoundFx.soft() }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
-                    ) {
-                        Text(f, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
-                    }
+                    ReportChip(f, false) { SoundFx.soft() }
                 }
             }
             // پیش‌نمایش — هویت گزارش Enterprise
@@ -1886,6 +1884,40 @@ private fun ReportsTab() {
                 )
             }
         }
+    }
+}
+
+/** چیپ گزارش — گوی کوچک سه‌بعدی هم‌زبان با تم (جایگزین دکمه بیضی ساده) */
+@Composable
+private fun ReportChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    val c = scheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (selected) Brush.verticalGradient(listOf(c.copy(alpha = 0.24f), c.copy(alpha = 0.08f)))
+                else SolidColor(extras.glass)
+            )
+            .border(1.dp, if (selected) c.copy(alpha = 0.5f) else extras.hairline, RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Box(
+            Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(if (selected) c else scheme.onSurfaceVariant.copy(alpha = 0.5f))
+        )
+        Spacer(Modifier.width(7.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) c else scheme.onSurfaceVariant,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        )
     }
 }
 
@@ -2194,6 +2226,20 @@ private fun Product360(p: P3, onDismiss: () -> Unit) {
                     }
                 }
             }
+            // کاردکس و گردش کالا — داخل پرونده
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("کاردکس و گردش", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
+                CardexRow(MrIcons.Sync, "۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", extras.positive)
+                CardexRow(MrIcons.Excel, "۰۳ شهریور", "فروش — هایپر طلایی", "−۸۵ کیلوگرم", scheme.error)
+                CardexRow(MrIcons.Excel, "۰۵ شهریور", "فروش — پخش نگین", "−۱۲۰ کیلوگرم", scheme.error)
+                CardexRow(MrIcons.Trend, "۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", extras.accent)
+                Text(
+                    "روند گردش ماهانه",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+                MicroArea(listOf(120f, 95f, 140f, 110f, 160f, 130f, 175f, 150f), scheme.primary)
+            }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -2258,12 +2304,17 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                                     Modifier
                                         .size(52.dp)
                                         .clip(CircleShape)
-                                        .background(Brush.linearGradient(extras.goldGradient)),
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.08f))
+                                            )
+                                        )
+                                        .border(1.dp, scheme.primary.copy(alpha = 0.45f), CircleShape),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
                                         c.name.take(1),
-                                        color = extras.goldOn,
+                                        color = scheme.primary,
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Black,
                                     )
@@ -2292,20 +2343,75 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                                     )
                                 }
                             }
-                            Column {
+                            // باکس مانده حساب — هم‌شکل با کارت‌های لیست مشتریان
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(extras.glass)
+                                    .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) {
                                 NumberHero(
                                     c.balance,
-                                    unit = "مانده حساب · تومان",
+                                    unit = "مانده حساب (تومان)",
                                     color = if (c.balance.startsWith("+")) extras.positive else scheme.error,
-                                    fontSize = 30.sp,
+                                    fontSize = 28.sp,
                                 )
                             }
                         }
                     }
-                    // فعالیت حساب
-                    Section("Account Activity") {
+                    // فعالیت حساب — با فیلتر بازه زمانی
+                    var range by remember { mutableStateOf("ماه") }
+                    val entries = activityByRange[range] ?: emptyList()
+                    Section("گردش حساب مشتری") {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // دکمه فیلتر سه‌بعدی — هم‌زبان با تم
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                listOf("هفته", "ماه", "سال").forEach { r ->
+                                    val sel = range == r
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                if (sel) Brush.verticalGradient(
+                                                    listOf(scheme.primary.copy(alpha = 0.24f), scheme.primary.copy(alpha = 0.08f))
+                                                ) else SolidColor(extras.glass)
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (sel) scheme.primary.copy(alpha = 0.5f) else extras.hairline,
+                                                RoundedCornerShape(12.dp),
+                                            )
+                                            .clickable { range = r; SoundFx.soft() }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                MrIcons.Filter,
+                                                contentDescription = null,
+                                                tint = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                                                modifier = Modifier.size(13.dp),
+                                            )
+                                            Spacer(Modifier.width(5.dp))
+                                            Text(
+                                                r,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                            activity.forEachIndexed { i, e ->
+                            entries.forEachIndexed { i, e ->
                                 Row(Modifier.height(IntrinsicSize.Min)) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -2354,17 +2460,26 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                     }
                     // اکشن‌ها
                     Section("اقدامات") {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                        ) {
-                            GlassAction(MrIcons.Call, "تماس", scheme.primary) { SoundFx.soft() }
-                            GlassAction(MrIcons.Message, "پیام", extras.accent) { SoundFx.soft() }
-                            GlassAction(MrIcons.Print, "چاپ", scheme.onSurfaceVariant) { SoundFx.soft() }
-                            GlassAction(MrIcons.Pdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
-                            GlassAction(MrIcons.Excel, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
-                            GlassAction(MrIcons.Share, "اشتراک", extras.gold) { SoundFx.soft() }
-                            GlassAction(MrIcons.Reminder, "یادآور", Color(0xFFFFA94D)) { SoundFx.soft() }
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // ردیف اول — ارتباط
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                            ) {
+                                GlassAction(MrIcons.Call, "تماس", scheme.primary) { SoundFx.soft() }
+                                GlassAction(MrIcons.Message, "پیام", extras.accent) { SoundFx.soft() }
+                                GlassAction(MrIcons.Reminder, "یادآور", Color(0xFFFFA94D)) { SoundFx.soft() }
+                                GlassAction(MrIcons.Share, "اشتراک", extras.gold) { SoundFx.soft() }
+                            }
+                            // ردیف دوم — خروجی‌ها
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                            ) {
+                                GlassAction(MrIcons.Pdf, "PDF", Color(0xFFFF6B6B)) { SoundFx.success() }
+                                GlassAction(MrIcons.Excel, "Excel", Color(0xFF69DB7C)) { SoundFx.success() }
+                                GlassAction(MrIcons.Print, "چاپ", scheme.primary) { SoundFx.soft() }
+                            }
                         }
                     }
                     Spacer(Modifier.height(24.dp))

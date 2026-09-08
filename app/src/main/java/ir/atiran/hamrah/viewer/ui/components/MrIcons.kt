@@ -243,6 +243,17 @@ object MrIcons {
         ),
     )
 
+    /** فیلتر — قیف با نقطه برند */
+    val Filter: ImageVector = mrIcon(
+        name = "MRFilter",
+        strokes = listOf(
+            "M5,6 h14 M7.5,6 l3.2,4.6 v5.6 l2.6,-1.6 v-4 l3.2,-4.6",
+        ),
+        fills = listOf(
+            "M12,14.7 a1.2,1.2 0 1,0 0,2.4 a1.2,1.2 0 1,0 0,-2.4",
+        ),
+    )
+
     /** شخصیت بصری — جواهر/منشور با وجه‌های بریده */
     val Theme: ImageVector = mrIcon(
         name = "MRTheme",
