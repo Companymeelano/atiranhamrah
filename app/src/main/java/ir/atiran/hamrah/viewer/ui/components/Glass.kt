@@ -2,12 +2,8 @@ package ir.atiran.hamrah.viewer.ui.components
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.derivedStateOf
@@ -28,7 +24,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -169,38 +164,9 @@ fun GlassCard(
     }
 
     Box(modifier) {
-        // ۱) هاله رنگی پشت کارت — نور از بالا، با ته‌رنگ تم
-        if (glow) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .drawBehind {
-                        val pad = 16.dp.toPx()
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    extras.glow.copy(alpha = 0.10f),
-                                    Color.Transparent,
-                                ),
-                                center = Offset(size.width * 0.5f, -size.height * 0.3f),
-                                radius = size.width.coerceAtLeast(1f) * 1.15f,
-                            ),
-                            topLeft = Offset(-pad, -pad),
-                            size = Size(size.width + pad * 2f, size.height + pad * 2f),
-                            cornerRadius = CornerRadius(corner.toPx() + pad),
-                        )
-                    }
-            )
-        }
-        // ۲+۳) بدنه شیشه‌ای + سایه رنگی + نور لمس
+        // بدنه شیشه‌ای — بدون هیچ سایه‌ای: تعریف فقط با خط مویی و پرکردن شیشه‌ای
         Box(
             Modifier
-                .shadow(
-                    elevation = 2.dp,
-                    shape = shape,
-                    ambientColor = extras.glow.copy(alpha = 0.30f),
-                    spotColor = extras.glow.copy(alpha = 0.45f),
-                )
                 .clip(shape)
                 .background(fill)
                 .drawWithContent {
@@ -331,12 +297,6 @@ fun GlassAction(
                     scaleX = scale
                     scaleY = scale
                 }
-                .shadow(
-                    elevation = 3.dp,
-                    shape = CircleShape,
-                    ambientColor = glow.copy(alpha = 0.35f),
-                    spotColor = glow.copy(alpha = 0.55f),
-                )
                 .size(50.dp)
                 .clip(CircleShape)
                 .background(extras.glassStrong)
@@ -402,12 +362,6 @@ fun MrOrbButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(
-                elevation = 4.dp,
-                shape = CircleShape,
-                ambientColor = tint.copy(alpha = 0.30f),
-                spotColor = tint.copy(alpha = 0.55f),
-            )
             .size(size)
             .clip(CircleShape)
             .background(
@@ -424,13 +378,6 @@ fun MrOrbButton(
                 .size(size * 0.58f)
                 .clip(CircleShape)
                 .background(tint.copy(alpha = halo))
-        )
-        // عمق آیکون: سایه ظریف زیر آیکون اصلی
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.22f),
-            modifier = Modifier.size(size * 0.47f).absoluteOffset(y = 0.8.dp),
         )
         Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(size * 0.47f))
     }

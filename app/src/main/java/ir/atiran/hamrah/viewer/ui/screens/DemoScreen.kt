@@ -76,7 +76,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
@@ -386,13 +385,6 @@ private fun MrTabBar(
                 // گوی شیشه‌ای سه‌بعدی — ثابت‌اندازه، فقط جلوه‌اش عوض می‌شود
                 Box(
                     Modifier
-                        .then(
-                            if (sel) Modifier.shadow(
-                                5.dp, CircleShape,
-                                ambientColor = c.copy(alpha = 0.30f),
-                                spotColor = c.copy(alpha = 0.55f),
-                            ) else Modifier
-                        )
                         .size(28.dp)
                         .clip(CircleShape)
                         .background(
@@ -402,13 +394,6 @@ private fun MrTabBar(
                         .border(1.dp, if (sel) c.copy(alpha = 0.55f) else Color.Transparent, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // عمق سه‌بعدی: سایه ظریف زیر آیکون اصلی
-                    Icon(
-                        icons[i],
-                        contentDescription = null,
-                        tint = Color.Black.copy(alpha = 0.22f),
-                        modifier = Modifier.size(15.dp).absoluteOffset(y = 0.8.dp),
-                    )
                     Icon(
                         icons[i],
                         contentDescription = label,
@@ -974,11 +959,6 @@ private fun HeroCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier
-                            .shadow(
-                                4.dp, CircleShape,
-                                ambientColor = scheme.primary.copy(alpha = 0.30f),
-                                spotColor = scheme.primary.copy(alpha = 0.50f),
-                            )
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(Brush.verticalGradient(extras.goldGradient))
