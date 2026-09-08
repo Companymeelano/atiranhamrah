@@ -1089,7 +1089,7 @@ private val receivablesTrend = listOf(
 
 /** تبدیل ارقام لاتین به فارسی */
 private fun faNum(v: String): String =
-    v.map { if (it in '0'..'9') ('۰' + it - '0') else it }.joinToString("")
+    v.map { if (it in '0'..'9') ('۰' + (it - '0')) else it }.joinToString("")
 
 /**
  * چارت دوقلوی مطالبات و وصول — حیاتی‌ترین نمودار مدیریت:

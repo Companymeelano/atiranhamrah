@@ -377,11 +377,11 @@ fun GlassAction(
 fun MrOrbButton(
     icon: ImageVector,
     contentDescription: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.primary,
     size: Dp = 38.dp,
     active: Boolean = false,
+    onClick: () -> Unit,
 ) {
     val extras = LocalThemeExtras.current
     val interaction = remember { MutableInteractionSource() }
