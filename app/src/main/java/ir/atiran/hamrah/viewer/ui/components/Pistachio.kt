@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -125,7 +126,7 @@ fun Pistachio(
             drawPath(
                 Path().apply {
                     moveTo(x(50f), y(6f))
-                    quadTo(x(46f), y(16f), x(50.5f), y(26f))
+                    quadraticBezierTo(x(46f), y(16f), x(50.5f), y(26f))
                 },
                 color = Color(0xFF8A6B42),
                 style = Stroke(2.1f * u, cap = StrokeCap.Round),
@@ -196,8 +197,8 @@ fun Pistachio(
             drawPath(
                 Path().apply {
                     moveTo(x(50f), y(8f))
-                    quadTo(x(57f), y(0.5f), x(66f), y(4.5f))
-                    quadTo(x(58.5f), y(11.5f), x(50f), y(8f))
+                    quadraticBezierTo(x(57f), y(0.5f), x(66f), y(4.5f))
+                    quadraticBezierTo(x(58.5f), y(11.5f), x(50f), y(8f))
                     close()
                 },
                 color = Color(0xFF6F9A4E),
