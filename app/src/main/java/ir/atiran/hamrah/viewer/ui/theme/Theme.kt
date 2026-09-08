@@ -52,6 +52,7 @@ enum class AppThemeId(val faName: String, val shortName: String, val isDark: Boo
     MilanoRoyale("میلانو رویال — فایننس لوکس", "میلانو", true),
     Pearl("پرل — سوئیس فایننس", "پرل", false),
     Ivory("آیووری — ادیتوریال پرمیوم", "آیووری", false),
+    Emerald("زمرد — رشد و پایداری", "زمرد", true),
 }
 
 /**
