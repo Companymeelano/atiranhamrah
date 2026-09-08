@@ -65,7 +65,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -82,6 +81,8 @@ import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.ErrorBanner
 import ir.atiran.hamrah.viewer.ui.components.LightLine
+import ir.atiran.hamrah.viewer.ui.components.MrIcons
+import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
@@ -123,9 +124,17 @@ fun LoginScreen(vm: AppViewModel) {
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TopIconButton(Icons.Filled.Palette, "شخصیت بصری") { themeSheet = true; SoundFx.soft() }
-                Spacer(Modifier.width(10.dp))
-                TopIconButton(Icons.Filled.GraphicEq, "تجربه رابط") { soundSheet = true; SoundFx.soft() }
+                MrOrbButton(
+                    MrIcons.Theme, "شخصیت بصری",
+                    tint = extras.gold,
+                    onClick = { themeSheet = true; SoundFx.soft() },
+                )
+                Spacer(Modifier.width(8.dp))
+                MrOrbButton(
+                    MrIcons.Waves, "تجربه رابط",
+                    tint = extras.accent,
+                    onClick = { soundSheet = true; SoundFx.soft() },
+                )
             }
 
             Spacer(Modifier.height(26.dp))
@@ -384,26 +393,9 @@ private fun MrLoadingOverlay() {
     }
 }
 
-// ------------------------------------------------------------ آیکون بالای صفحه
-@Composable
-private fun TopIconButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
-    val extras = LocalThemeExtras.current
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(extras.glassStrong)
-            .border(1.dp, extras.hairline, CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = desc, tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), modifier = Modifier.size(19.dp))
-    }
-}
-
 // ------------------------------------------------------------ شیت انتخاب تم
 @Composable
-private fun ThemeSheet(vm: AppViewModel, onDismiss: () -> Unit) {
+fun ThemeSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     Dialog(onDismissRequest = onDismiss) {
@@ -466,7 +458,7 @@ private fun themeSwatch(t: AppThemeId): List<Color> = when (t) {
 
 // ------------------------------------------------------------ شیت تجربه رابط
 @Composable
-private fun ExperienceSheet(vm: AppViewModel, onDismiss: () -> Unit) {
+fun ExperienceSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val exp = vm.experience
     Dialog(onDismissRequest = onDismiss) {
@@ -515,50 +507,43 @@ private fun ExpRow(title: String, subtitle: String, checked: Boolean, onChange: 
 }
 
 // ------------------------------------------------------------ امضای فشرده طراح
-/** یک ردیف ظریف — بدون اشغال فضای عمودی */
+/** یک خط ظریف — مونوگرام کوچک + نام · استودیو؛ بدون اشغال فضا */
 @OptIn(ExperimentalTextApi::class)
 @Composable
 private fun DesignerStrip() {
-    val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(22.dp)
                 .clip(CircleShape)
                 .background(Brush.linearGradient(extras.goldGradient))
-                .border(1.dp, extras.gold.copy(alpha = 0.45f), CircleShape),
+                .border(0.5.dp, Color.White.copy(alpha = 0.22f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text("MY", color = extras.goldOn, fontSize = 10.sp, fontWeight = FontWeight.Black)
-        }
-        Column {
-            Text(
-                "Milad Yaghoobi",
-                style = TextStyle(
-                    brush = Brush.horizontalGradient(extras.goldGradient),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.4.sp,
-                ),
-            )
-            Text(
-                "M E E L A N O   S T U D I O   D E S I G N",
-                style = TextStyle(
-                    brush = Brush.horizontalGradient(extras.goldGradient),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 2.sp,
-                ),
-            )
+            Text("MY", color = extras.goldOn, fontSize = 7.5.sp, fontWeight = FontWeight.Black)
         }
         Text(
-            "v${ir.atiran.hamrah.viewer.BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelSmall,
-            color = scheme.onBackground.copy(alpha = 0.45f),
+            "Milad Yaghoobi",
+            style = TextStyle(
+                brush = Brush.horizontalGradient(extras.goldGradient),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.3.sp,
+            ),
+        )
+        Text("·", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f), fontSize = 11.sp)
+        Text(
+            "Meelano Studio Design",
+            style = TextStyle(
+                brush = Brush.horizontalGradient(extras.goldGradient),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 1.sp,
+            ),
         )
     }
 }

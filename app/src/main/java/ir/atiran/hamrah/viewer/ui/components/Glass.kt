@@ -28,6 +28,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -363,6 +364,75 @@ fun GlassAction(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
+    }
+}
+
+// ============================================================ دکمه-گوی سه‌بعدی
+/**
+ * دکمه کنترلی M•REPORT — گوی شیشه‌ای با:
+ * نور از بالا (گرادیان عمودی)، سایه رنگی تم، عمق آیکون (سایه زیر آیکون)،
+ * فیزیک فشردن (فرورفتن + کم‌شدن هاله) و هماهنگی کامل با تم انتخابی.
+ */
+@Composable
+fun MrOrbButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    size: Dp = 38.dp,
+    active: Boolean = false,
+) {
+    val extras = LocalThemeExtras.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.90f else 1f,
+        animationSpec = tween(120),
+        label = "orbScale",
+    )
+    val halo by animateFloatAsState(
+        targetValue = if (pressed) 0.05f else if (active) 0.30f else 0.15f,
+        animationSpec = tween(120),
+        label = "orbHalo",
+    )
+    Box(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = 4.dp,
+                shape = CircleShape,
+                ambientColor = tint.copy(alpha = 0.30f),
+                spotColor = tint.copy(alpha = 0.55f),
+            )
+            .size(size)
+            .clip(CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(tint.copy(alpha = 0.22f), tint.copy(alpha = 0.06f))
+                )
+            )
+            .border(1.dp, if (active) tint.copy(alpha = 0.55f) else extras.hairline, CircleShape)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(size * 0.58f)
+                .clip(CircleShape)
+                .background(tint.copy(alpha = halo))
+        )
+        // عمق آیکون: سایه ظریف زیر آیکون اصلی
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color.Black.copy(alpha = 0.22f),
+            modifier = Modifier.size(size * 0.47f).absoluteOffset(y = 0.8.dp),
+        )
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(size * 0.47f))
     }
 }
 

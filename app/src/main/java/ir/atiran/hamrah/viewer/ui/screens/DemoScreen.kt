@@ -42,7 +42,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Call
@@ -111,6 +110,7 @@ import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
+import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
 import ir.atiran.hamrah.viewer.ui.components.NumberHero
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
@@ -147,7 +147,7 @@ private val heroes = listOf(
     Hero("مشتریان", "۲٬۱۲۰", "نفر", "مشتری فعال در این دوره", MrIcons.Customers, listOf(40, 48, 52, 58, 55, 64, 72)),
     Hero("کالاها", "۳۴۸", "قلم", "قلم کالای فعال", MrIcons.Products, listOf(60, 58, 62, 65, 63, 68, 70)),
     Hero("گردش مالی", "۸۶۴م", "تومان", "گردش حساب این ماه", MrIcons.Trend, listOf(35, 45, 42, 58, 64, 72, 88)),
-    Hero("هشدارها", "۱۵", "مورد", "نیازمند توجه", MrIcons.Alerts, listOf(20, 35, 28, 42, 38, 30, 25)),
+    Hero("مطالبات معوق", "۷", "مشتری", "بدهی بیش از ۳۰ روز — نیازمند پیگیری", MrIcons.Receivables, listOf(26, 29, 27, 31, 30, 34, 38)),
 )
 
 private data class P3(val name: String, val v: Float)
@@ -219,6 +219,19 @@ fun DemoScreen(vm: AppViewModel) {
         }
     }
     BackHandler(enabled = customerOpen != null) { customerOpen = null }
+    var syncSheetOpen by remember { mutableStateOf(false) }
+    var themeSheetOpen by remember { mutableStateOf(false) }
+    var expSheetOpen by remember { mutableStateOf(false) }
+    var intervalSec by remember { mutableStateOf(0) }
+    // به‌روزرسانی خودکار — بدون تغییر هیچ داده‌ای در آتیران
+    LaunchedEffect(intervalSec) {
+        if (intervalSec > 0) {
+            while (true) {
+                delay(intervalSec.toLong() * 1000L)
+                refresh(true)
+            }
+        }
+    }
 
     AmbientBackground(enabled = vm.experience.ambient) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -243,19 +256,20 @@ fun DemoScreen(vm: AppViewModel) {
                     }
                 },
                 actions = {
-                    // وضعیت اتصال بسیار ظریف — متصل / در حال دریافت
-                    Box(
-                        Modifier.padding(end = 4.dp),
-                        contentAlignment = Alignment.Center,
+                    // نوار کنترل: جستجو + همگام‌سازی آتیران + شخصیت بصری + تجربه رابط
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(end = 6.dp),
                     ) {
-                        CalmPulse(
-                            if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
-                            dotSize = 8.dp,
-                            enabled = !refreshing,
-                        )
-                    }
-                    IconButton(onClick = { paletteOpen = true; SoundFx.soft() }) {
-                        Icon(MrIcons.Search, contentDescription = "جستجوی هوشمند")
+                        MrOrbButton(MrIcons.Search, "جستجوی هوشمند") { paletteOpen = true; SoundFx.soft() }
+                        MrOrbButton(
+                            MrIcons.Sync, "اتصال و همگام‌سازی آتیران",
+                            tint = if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
+                            active = refreshing,
+                        ) { syncSheetOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Theme, "شخصیت بصری", tint = extras.gold) { themeSheetOpen = true; SoundFx.soft() }
+                        MrOrbButton(MrIcons.Waves, "تجربه رابط", tint = extras.accent) { expSheetOpen = true; SoundFx.soft() }
                     }
                 },
             )
@@ -278,7 +292,7 @@ fun DemoScreen(vm: AppViewModel) {
             ) {
                 Spacer(Modifier.height(2.dp))
                 when (tab) {
-                    0 -> OverviewTab(vm, refreshing, refresh)
+                    0 -> OverviewTab(vm, refreshing)
                     1 -> CustomersTab { customerOpen = it }
                     2 -> ProductsTab { productOpen = it }
                     3 -> ReportsTab()
@@ -310,6 +324,23 @@ fun DemoScreen(vm: AppViewModel) {
 
     productOpen?.let { p ->
         Product360(p, onDismiss = { productOpen = null })
+    }
+
+    if (syncSheetOpen) {
+        SyncSheet(
+            vm = vm,
+            refreshing = refreshing,
+            intervalSec = intervalSec,
+            onInterval = { intervalSec = it },
+            onRefresh = { refresh(false) },
+            onDismiss = { syncSheetOpen = false },
+        )
+    }
+    if (themeSheetOpen) {
+        ThemeSheet(vm) { themeSheetOpen = false }
+    }
+    if (expSheetOpen) {
+        ExperienceSheet(vm) { expSheetOpen = false }
     }
 }
 
@@ -380,6 +411,13 @@ private fun MrTabBar(
                         .border(1.dp, if (sel) c.copy(alpha = 0.55f) else Color.Transparent, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
+                    // عمق سه‌بعدی: سایه ظریف زیر آیکون اصلی
+                    Icon(
+                        icons[i],
+                        contentDescription = null,
+                        tint = Color.Black.copy(alpha = 0.22f),
+                        modifier = Modifier.size(15.dp).absoluteOffset(y = 0.8.dp),
+                    )
                     Icon(
                         icons[i],
                         contentDescription = label,
@@ -443,7 +481,7 @@ private fun MTab(label: String, selected: Boolean, onClick: () -> Unit) {
 
 // ============================================================ تب نمای کلی
 @Composable
-private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boolean) -> Unit) {
+private fun OverviewTab(vm: AppViewModel, refreshing: Boolean) {
     val motion = vm.experience.motion
     val extras = LocalThemeExtras.current
     val scheme = MaterialTheme.colorScheme
@@ -454,16 +492,6 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
         ?.takeIf { it.size == heroes.size }
         ?: heroes.indices.toList()
     var editLayout by remember { mutableStateOf(false) }
-    var intervalSec by remember { mutableStateOf(0) }
-    // به‌روزرسانی خودکار — بدون تغییر هیچ داده‌ای در آتیران
-    LaunchedEffect(intervalSec) {
-        if (intervalSec > 0) {
-            while (true) {
-                delay(intervalSec.toLong() * 1000L)
-                onRefresh(true)
-            }
-        }
-    }
     val g1 = stagger(0, motion)
     val g2 = stagger(200, motion)
     val g3 = stagger(400, motion)
@@ -482,122 +510,29 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Business Pulse",
-                    style = MaterialTheme.typography.labelMedium,
-                    letterSpacing = 2.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "نبض کسب‌وکار",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.primary,
                     modifier = Modifier.weight(1f),
                 )
-                Text(
-                    "وضعیت کلی سیستم",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            PulseRow("مشتریان", Color(0xFF69DB7C), "پایدار", 0.95f)
-            PulseRow("مطالبات", Color(0xFFFFA94D), "نیازمند توجه", 0.62f)
-            PulseRow("چک‌ها", Color(0xFFFF6B6B), "بحرانی", 0.35f)
-            PulseRow("موجودی", Color(0xFF69DB7C), "پایدار", 0.88f)
-            PulseRow("سیستم", extras.accent, "پایدار", 1f)
-        }
-    }
-
-    // ---------- وضعیت اتصال و همگام‌سازی آتیران ----------
-    GlassCard {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
                 CalmPulse(
                     if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
-                    dotSize = 9.dp,
-                    enabled = !refreshing,
-                )
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (refreshing) "در حال دریافت اطلاعات..." else "متصل به سرویس آتیران",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        "آخرین دریافت اطلاعات: " + fmtTime(vm.lastSyncMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant,
-                    )
-                }
-                // دکمه دریافت مجدد — Pill شیشه‌ای
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(extras.glassStrong)
-                        .border(1.dp, extras.hairline, RoundedCornerShape(50))
-                        .clickable { onRefresh(false) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    Icon(MrIcons.Sync, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "دریافت مجدد",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = scheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            // نمودار زمان پاسخ سرویس
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("زمان پاسخ سرویس", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-                    Text(
-                        "۲۳ میلی‌ثانیه — پایدار",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Text(
-                    "ms",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
+                    dotSize = 8.dp,
+                    enabled = refreshing,
                 )
             }
-            MicroArea(listOf(22f, 18f, 26f, 21f, 19f, 24f, 20f, 23f), scheme.primary)
-            // انتخاب بازه به‌روزرسانی — سگمنت هم‌عرض
-            Text("به‌روزرسانی خودکار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                listOf("دستی" to 0, "۳۰ ثانیه" to 30, "۱ دقیقه" to 60, "۵ دقیقه" to 300).forEach { (label, sec) ->
-                    val sel = intervalSec == sec
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (sel) scheme.primary.copy(alpha = 0.14f) else extras.glass)
-                            .border(
-                                1.dp,
-                                if (sel) scheme.primary.copy(alpha = 0.45f) else extras.hairline,
-                                RoundedCornerShape(12.dp),
-                            )
-                            .clickable { intervalSec = sec; SoundFx.soft() }
-                            .padding(vertical = 7.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (sel) scheme.primary else scheme.onSurfaceVariant,
-                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
-                            maxLines = 1,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
+            PulseRow(MrIcons.Customers, "مشتریان", Color(0xFF69DB7C), "پایدار", 0.95f)
+            PulseRow(MrIcons.Receivables, "مطالبات", Color(0xFFFFA94D), "نیازمند توجه", 0.62f)
+            PulseRow(MrIcons.Checks, "چک‌ها", Color(0xFFFF6B6B), "بحرانی", 0.35f)
+            PulseRow(MrIcons.Products, "موجودی", Color(0xFF69DB7C), "پایدار", 0.88f)
+            PulseRow(MrIcons.Settings, "سیستم", extras.accent, "پایدار", 1f)
+            PulseRow(
+                MrIcons.Sync, "اتصال آتیران",
+                if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C),
+                if (refreshing) "در حال دریافت" else "متصل",
+                if (refreshing) 0.55f else 1f,
+            )
         }
     }
 
@@ -676,14 +611,9 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
         }
     }
 
-    // ---------- چارت اصلی: گردش حساب ----------
-    Section("گردش حساب — ۱۲ نقطه اخیر") {
-        GlowAreaChart(
-            values = flowValues,
-            dates = flowDates,
-            progress = g2,
-            motion = motion,
-        )
+    // ---------- چارت اصلی: روند مطالبات و وصول طلب ----------
+    Section("روند مطالبات و وصول طلب — ۸ ماه اخیر") {
+        ReceivablesTrendChart(progress = g2)
     }
 
     // ---------- دونات مطالبات ----------
@@ -754,19 +684,27 @@ private fun MReportTitle(vm: AppViewModel) {
 }
 
 // ============================================================ ردیف تابلوی نبض
-/** نقطه وضعیت + برچسب + نوار سیگنال گرادیانی + واژه وضعیت — هم‌زبان با تم */
+/** نشان آیکون‌دار + برچسب + نوار سیگنال گرادیانی + واژه وضعیت — هم‌زبان با تم */
 @Composable
-private fun PulseRow(label: String, color: Color, word: String, frac: Float) {
+private fun PulseRow(icon: ImageVector, label: String, color: Color, word: String, frac: Float) {
     val scheme = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // فقط موارد غیرعادی می‌تپند — پایدارها آرام‌اند
-        CalmPulse(color, dotSize = 8.dp, enabled = frac < 0.99f)
+        Box(
+            Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.13f))
+                .border(1.dp, color.copy(alpha = 0.30f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        }
         Spacer(Modifier.width(8.dp))
         Text(
             label,
             style = MaterialTheme.typography.bodySmall,
             color = scheme.onSurface,
-            modifier = Modifier.width(52.dp),
+            modifier = Modifier.width(58.dp),
         )
         Spacer(Modifier.width(8.dp))
         Box(
@@ -790,7 +728,7 @@ private fun PulseRow(label: String, color: Color, word: String, frac: Float) {
             style = MaterialTheme.typography.labelSmall,
             color = color,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(72.dp),
+            modifier = Modifier.width(78.dp),
         )
     }
 }
@@ -838,16 +776,27 @@ private fun InsightRow(
 /** سن بدهی: سه ستون ۳۰-۶۰ / ۶۰-۹۰ / +۹۰ روز — رنگ گرم وضعیت */
 @Composable
 private fun MiniAgingBars() {
-    Canvas(Modifier.size(56.dp, 34.dp)) {
+    val extras = LocalThemeExtras.current
+    Canvas(Modifier.size(62.dp, 38.dp)) {
         val heights = listOf(0.42f, 0.68f, 0.95f)
         val cols = listOf(Color(0xFFFFA94D), Color(0xFFFF8A5C), Color(0xFFFF6B6B))
         val w = size.width / 3f
+        // خط پایه مویی
+        drawLine(extras.hairline, Offset(0f, size.height), Offset(size.width, size.height), 1f)
         heights.forEachIndexed { i, f ->
-            val h = size.height * f
+            val h = size.height * f * 0.90f
+            val left = i * w + w * 0.26f
+            // هاله نور پشت ستون
             drawRoundRect(
-                brush = Brush.verticalGradient(listOf(cols[i].copy(alpha = 0.40f), cols[i])),
-                topLeft = Offset(i * w + w * 0.24f, size.height - h),
-                size = Size(w * 0.52f, h),
+                brush = Brush.verticalGradient(listOf(cols[i].copy(alpha = 0.16f), Color.Transparent)),
+                topLeft = Offset(left, size.height - h - 3.dp.toPx()),
+                size = Size(w * 0.48f, h + 3.dp.toPx()),
+                cornerRadius = CornerRadius(3.dp.toPx()),
+            )
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(cols[i].copy(alpha = 0.45f), cols[i])),
+                topLeft = Offset(left, size.height - h),
+                size = Size(w * 0.48f, h),
                 cornerRadius = CornerRadius(2.5.dp.toPx()),
             )
         }
@@ -858,7 +807,7 @@ private fun MiniAgingBars() {
 @Composable
 private fun MiniShareDonut() {
     val extras = LocalThemeExtras.current
-    Canvas(Modifier.size(34.dp)) {
+    Canvas(Modifier.size(38.dp)) {
         val stroke = 5.dp.toPx()
         val r = (size.minDimension - stroke) / 2f
         val tl = Offset((size.width - r * 2) / 2f, (size.height - r * 2) / 2f)
@@ -866,7 +815,14 @@ private fun MiniShareDonut() {
             color = extras.hairline,
             startAngle = 0f, sweepAngle = 360f, useCenter = false,
             topLeft = tl, size = Size(r * 2, r * 2),
-            style = Stroke(stroke, cap = StrokeCap.Round),
+            style = Stroke(stroke),
+        )
+        // هاله نور دور قوس
+        drawArc(
+            color = extras.gold.copy(alpha = 0.18f),
+            startAngle = -90f, sweepAngle = 252f, useCenter = false,
+            topLeft = tl, size = Size(r * 2, r * 2),
+            style = Stroke(stroke + 3.dp.toPx()),
         )
         drawArc(
             color = extras.gold,
@@ -874,19 +830,25 @@ private fun MiniShareDonut() {
             topLeft = tl, size = Size(r * 2, r * 2),
             style = Stroke(stroke, cap = StrokeCap.Round),
         )
+        drawCircle(
+            extras.gold.copy(alpha = 0.5f),
+            radius = 2.dp.toPx(),
+            center = Offset(size.width / 2f, size.height / 2f),
+        )
     }
 }
 
 /** روند نزولی مطالبات — بهبود وصول، هم‌رنگ positive تم */
 @Composable
 private fun MiniTrendDown(color: Color) {
-    Canvas(Modifier.size(56.dp, 34.dp)) {
+    Canvas(Modifier.size(62.dp, 38.dp)) {
+        val top = 5.dp.toPx()
         val pts = listOf(
-            Offset(0f, size.height * 0.18f),
-            Offset(size.width * 0.3f, size.height * 0.42f),
-            Offset(size.width * 0.55f, size.height * 0.38f),
-            Offset(size.width * 0.8f, size.height * 0.68f),
-            Offset(size.width, size.height * 0.82f),
+            Offset(0f, top + size.height * 0.10f),
+            Offset(size.width * 0.3f, top + size.height * 0.34f),
+            Offset(size.width * 0.55f, top + size.height * 0.30f),
+            Offset(size.width * 0.8f, top + size.height * 0.58f),
+            Offset(size.width, top + size.height * 0.72f),
         )
         val path = Path().apply {
             moveTo(pts.first().x, pts.first().y)
@@ -895,9 +857,110 @@ private fun MiniTrendDown(color: Color) {
                 cubicTo(mid, pts[i - 1].y, mid, pts[i].y, pts[i].x, pts[i].y)
             }
         }
-        drawPath(path, color = color.copy(alpha = 0.15f), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+        // ناحیه محو زیر منحنی
+        val fill = Path().apply {
+            moveTo(pts.first().x, size.height)
+            pts.forEach { lineTo(it.x, it.y) }
+            lineTo(pts.last().x, size.height)
+            close()
+        }
+        drawPath(fill, Brush.verticalGradient(listOf(color.copy(alpha = 0.14f), Color.Transparent)))
+        drawPath(path, color = color.copy(alpha = 0.15f), style = Stroke(4.5.dp.toPx(), cap = StrokeCap.Round))
         drawPath(path, color = color, style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
-        drawCircle(color, radius = 2.2.dp.toPx(), center = pts.last())
+        // نقطه پایان با هاله
+        drawCircle(color.copy(alpha = 0.25f), radius = 5.dp.toPx(), center = pts.last())
+        drawCircle(color, radius = 2.4.dp.toPx(), center = pts.last())
+    }
+}
+
+// ============================================================ شیت اتصال و همگام‌سازی آتیران
+@Composable
+private fun SyncSheet(
+    vm: AppViewModel,
+    refreshing: Boolean,
+    intervalSec: Int,
+    onInterval: (Int) -> Unit,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    val statusColor = if (refreshing) Color(0xFFFFA94D) else Color(0xFF69DB7C)
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(scheme.surface.copy(alpha = 0.97f))
+                .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // سربرگ: نشان سه‌بعدی وضعیت
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Brush.verticalGradient(listOf(statusColor.copy(alpha = 0.30f), statusColor.copy(alpha = 0.10f))))
+                        .border(1.dp, statusColor.copy(alpha = 0.45f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(MrIcons.Sync, contentDescription = null, tint = statusColor, modifier = Modifier.size(19.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("اتصال به سرویس آتیران", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (refreshing) "در حال دریافت اطلاعات..." else "متصل — آخرین دریافت: " + fmtTime(vm.lastSyncMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // زمان پاسخ سرویس
+            Text("زمان پاسخ سرویس — ۲۳ میلی‌ثانیه (پایدار)", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            MicroArea(listOf(22f, 18f, 26f, 21f, 19f, 24f, 20f, 23f), scheme.primary)
+            // بازه به‌روزرسانی خودکار
+            Text("به‌روزرسانی خودکار", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("دستی" to 0, "۳۰ ثانیه" to 30, "۱ دقیقه" to 60, "۵ دقیقه" to 300).forEach { (label, sec) ->
+                    val sel = intervalSec == sec
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (sel) scheme.primary.copy(alpha = 0.14f) else extras.glass)
+                            .border(1.dp, if (sel) scheme.primary.copy(alpha = 0.45f) else extras.hairline, RoundedCornerShape(12.dp))
+                            .clickable { onInterval(sec); SoundFx.soft() }
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+            // دکمه دریافت مجدد — متالیک تم
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Brush.horizontalGradient(extras.goldGradient))
+                    .clickable { onRefresh(); onDismiss() }
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(MrIcons.Sync, contentDescription = null, tint = extras.goldOn, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("دریافت مجدد اطلاعات", color = extras.goldOn, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            }
+        }
     }
 }
 
@@ -1008,6 +1071,155 @@ private fun MicroArea(values: List<Float>, color: Color) {
         // نقطه امضا در انتهای روند
         drawCircle(color.copy(alpha = 0.25f), radius = 4.dp.toPx(), center = pts.last())
         drawCircle(color, radius = 2.2.dp.toPx(), center = pts.last())
+    }
+}
+
+// ============================================================ روند مطالبات و وصول طلب
+private data class TrendPoint(val month: String, val receivable: Float, val collected: Float)
+private val receivablesTrend = listOf(
+    TrendPoint("فروردین", 2.1f, 1.6f),
+    TrendPoint("اردیبهشت", 2.4f, 1.9f),
+    TrendPoint("خرداد", 2.3f, 2.0f),
+    TrendPoint("تیر", 2.6f, 2.2f),
+    TrendPoint("مرداد", 2.5f, 2.3f),
+    TrendPoint("شهریور", 2.7f, 2.5f),
+    TrendPoint("مهر", 2.9f, 2.6f),
+    TrendPoint("آبان", 3.1f, 2.9f),
+)
+
+/** تبدیل ارقام لاتین به فارسی */
+private fun faNum(v: String): String =
+    v.map { if (it in '0'..'9') ('۰' + it - '0') else it }.joinToString("")
+
+/**
+ * چارت دوقلوی مطالبات و وصول — حیاتی‌ترین نمودار مدیریت:
+ * منحنی مطالبات (متالیک تم) و وصول طلب (سبز تم) با هاله نور،
+ * نقاط امضای برند و Tooltip شیشه‌ای دوقلو.
+ */
+@Composable
+private fun ReceivablesTrendChart(progress: Float) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    var selected by remember { mutableStateOf<Int?>(null) }
+
+    Column {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LegendChip(extras.gold, "مطالبات")
+            LegendChip(extras.positive, "وصول طلب")
+        }
+        Spacer(Modifier.height(8.dp))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            Canvas(
+                Modifier
+                    .fillMaxWidth()
+                    .height(190.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures { pos ->
+                            val step = size.width / (receivablesTrend.size - 1f)
+                            selected = (pos.x / step).roundToInt().coerceIn(0, receivablesTrend.size - 1)
+                            SoundFx.soft()
+                        }
+                    },
+            ) {
+                val maxV = 3.4f
+                val labelSpace = 18.dp.toPx()
+                val h = size.height - labelSpace
+                val stepX = size.width / (receivablesTrend.size - 1f)
+                for (g in 1..3) {
+                    drawLine(extras.hairline, Offset(0f, h * g / 4f), Offset(size.width, h * g / 4f), 1f)
+                }
+                fun ptsOf(pick: (TrendPoint) -> Float): List<Offset> =
+                    receivablesTrend.mapIndexed { i, t -> Offset(i * stepX, h - (pick(t) / maxV) * h * progress) }
+                val rp = ptsOf { it.receivable }
+                val cp = ptsOf { it.collected }
+                fun smooth(ps: List<Offset>): Path = Path().apply {
+                    moveTo(ps.first().x, ps.first().y)
+                    for (i in 1 until ps.size) {
+                        val mid = (ps[i - 1].x + ps[i].x) / 2f
+                        cubicTo(mid, ps[i - 1].y, mid, ps[i].y, ps[i].x, ps[i].y)
+                    }
+                }
+                fun area(ps: List<Offset>): Path = Path().apply {
+                    moveTo(ps.first().x, h)
+                    ps.forEach { lineTo(it.x, it.y) }
+                    lineTo(ps.last().x, h)
+                    close()
+                }
+                // ناحیه‌های محو
+                drawPath(area(rp), Brush.verticalGradient(listOf(extras.gold.copy(alpha = 0.15f), Color.Transparent)))
+                drawPath(area(cp), Brush.verticalGradient(listOf(extras.positive.copy(alpha = 0.13f), Color.Transparent)))
+                // هاله + خط هر دو منحنی
+                drawPath(smooth(cp), color = extras.positive.copy(alpha = 0.12f), style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                drawPath(smooth(cp), color = extras.positive, style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
+                drawPath(smooth(rp), color = extras.gold.copy(alpha = 0.12f), style = Stroke(7.dp.toPx(), cap = StrokeCap.Round))
+                drawPath(smooth(rp), color = extras.gold, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+                // نقاط امضای برند روی منحنی مطالبات
+                rp.forEachIndexed { i, pt ->
+                    if (i != selected) {
+                        drawCircle(extras.gold.copy(alpha = 0.18f), radius = 4.5.dp.toPx(), center = pt)
+                        drawCircle(extras.gold, radius = 2.2.dp.toPx(), center = pt)
+                    }
+                }
+                selected?.let { i ->
+                    val pr = rp[i]
+                    val pc = cp[i]
+                    drawLine(extras.hairline, Offset(pr.x, 0f), Offset(pr.x, h), 1f)
+                    drawCircle(extras.positive.copy(alpha = 0.25f), radius = 9.dp.toPx(), center = pc)
+                    drawCircle(extras.positive, radius = 3.dp.toPx(), center = pc)
+                    drawCircle(extras.gold.copy(alpha = 0.25f), radius = 11.dp.toPx(), center = pr)
+                    drawCircle(scheme.surface, radius = 5.5.dp.toPx(), center = pr)
+                    drawCircle(extras.gold, radius = 3.dp.toPx(), center = pr)
+                }
+            }
+            // Tooltip شیشه‌ای دوقلو
+            selected?.let { i ->
+                val t = receivablesTrend[i]
+                val stepDp = maxWidth / (receivablesTrend.size - 1)
+                val x = (stepDp * i - 74.dp).coerceIn(0.dp, maxWidth - 148.dp)
+                Column(
+                    modifier = Modifier
+                        .absoluteOffset(x = x, y = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(extras.glassStrong)
+                        .border(1.dp, extras.hairline, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(t.month, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(extras.gold))
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            "مطالبات " + faNum(t.receivable.toString()).replace('.', '٫'),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(extras.positive))
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            "وصول " + faNum(t.collected.toString()).replace('.', '٫'),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = extras.positive,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendChip(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.width(5.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

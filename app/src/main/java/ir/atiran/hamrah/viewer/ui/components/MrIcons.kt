@@ -147,6 +147,43 @@ object MrIcons {
         ),
     )
 
+    /** شخصیت بصری — جواهر/منشور با وجه‌های بریده */
+    val Theme: ImageVector = mrIcon(
+        name = "MRTheme",
+        strokes = listOf(
+            "M12,3.6 L18.8,9 L12,20.4 L5.2,9 z M5.2,9 h13.6 M12,3.6 L9.2,9 l2.8,11.4 M12,3.6 L14.8,9 l-2.8,11.4",
+        ),
+    )
+
+    /** تجربه رابط — اکولایزر با میله‌های گرد */
+    val Waves: ImageVector = mrIcon(
+        name = "MRWaves",
+        strokes = listOf(
+            "M5.5,9.75 v4.5 M9.75,7.5 v9 M14,8.5 v7 M18.25,10.25 v3.5",
+        ),
+    )
+
+    /** مطالبات — سکه با علامت وصول */
+    val Receivables: ImageVector = mrIcon(
+        name = "MRReceivables",
+        strokes = listOf(
+            "M12,4 a8,8 0 1,0 0,16 a8,8 0 1,0 0,-16",
+            "M8.75,12.25 l2.25,2.25 l4.25,-4.75",
+        ),
+    )
+
+    /** چک — سند با خط امضا و نقطه برند */
+    val Checks: ImageVector = mrIcon(
+        name = "MRChecks",
+        strokes = listOf(
+            "M6.75,6.75 h10.5 a1.6,1.6 0 0 1 1.6,1.6 v7.3 a1.6,1.6 0 0 1 -1.6,1.6 h-10.5 a1.6,1.6 0 0 1 -1.6,-1.6 v-7.3 a1.6,1.6 0 0 1 1.6,-1.6 z",
+            "M8.5,14.75 h4.5",
+        ),
+        fills = listOf(
+            "M15.6,13.9 a1.1,1.1 0 1,0 0,2.2 a1.1,1.1 0 1,0 0,-2.2",
+        ),
+    )
+
     /** روند — خط صعودی با نوک گرد + نقطه برند در مبدأ */
     val Trend: ImageVector = mrIcon(
         name = "MRTrend",
