@@ -78,8 +78,8 @@ jobs:
         run: |
           echo "===== Kotlin/compile errors ====="
           grep -E "^e: |error: |FAILURE:|What went wrong|Caused by:" -A 2 gradle-build.log | head -80 || true
-          echo "===== as annotations ====="
-          grep -E "^e: |error: " gradle-build.log | head -60 | while IFS= read -r line; do
+          echo "===== failure context as annotations ====="
+          { grep -E "^e: |error: |FAILURE:|What went wrong|Caused by:|Execution failed|Duplicate|Unable|Could not|missing|not found|required" gradle-build.log; echo '--- TAIL 60 ---'; tail -60 gradle-build.log; } | grep -v '^\s*$' | head -110 | while IFS= read -r line; do
             echo "::error::${line:0:600}"
           done
           exit 1
