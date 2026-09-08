@@ -259,20 +259,22 @@ fun FandoghIntro(onDone: () -> Unit) {
         }
         val wFraction = 0.68f - 0.40f * (tv / 0.55f).coerceIn(0f, 1f).let { p -> p * p * (3f - 2f * p) }
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val bodyX = maxWidth * wFraction
-            val bodyY = maxHeight * 0.74f - maxHeight * 0.115f
+            val cw = maxWidth
+            val chh = maxHeight
+            val bodyX = cw * wFraction
+            val bodyY = chh * 0.74f - chh * 0.115f
             val step = if (tv < 0.55f) sin(tv * 16f * PI.toFloat()) * 3f else 0f
             val scratchTilt = if (tv >= 0.55f && tv < 0.78f) sin(tv * 10f * PI.toFloat()) * 7f else 0f
             Box(
                 Modifier
                     .absoluteOffset(
-                        x = bodyX - maxWidth * 0.055f,
-                        y = bodyY - maxHeight * 0.055f + step.dp,
+                        x = bodyX - cw * 0.055f,
+                        y = bodyY - chh * 0.055f + step.dp,
                     )
                     .graphicsLayerTilt(scratchTilt)
             ) {
                 Fandogh(
-                    size = maxWidth * 0.24f,
+                    size = cw * 0.24f,
                     bobbing = tv < 0.55f,
                     mood = mood,
                     themeTint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
