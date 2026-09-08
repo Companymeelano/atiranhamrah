@@ -446,25 +446,28 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
         MReportTitle(vm)
     }
 
-    // ---------- M•R Pulse: امضای بصری ----------
+    // ---------- M•R Pulse: تابلوی وضعیت کسب‌وکار — امضای بصری ----------
     GlassCard {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                "Business Pulse",
-                style = MaterialTheme.typography.labelMedium,
-                letterSpacing = 2.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                PulseItem("مشتریان", Color(0xFF69DB7C))
-                PulseItem("مطالبات", Color(0xFFFFA94D))
-                PulseItem("چک‌ها", Color(0xFFFF6B6B))
-                PulseItem("موجودی", Color(0xFF69DB7C))
-                PulseItem("سیستم", extras.accent)
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Business Pulse",
+                    style = MaterialTheme.typography.labelMedium,
+                    letterSpacing = 2.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "وضعیت کلی سیستم",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+            PulseRow("مشتریان", Color(0xFF69DB7C), "پایدار", 0.95f)
+            PulseRow("مطالبات", Color(0xFFFFA94D), "نیازمند توجه", 0.62f)
+            PulseRow("چک‌ها", Color(0xFFFF6B6B), "بحرانی", 0.35f)
+            PulseRow("موجودی", Color(0xFF69DB7C), "پایدار", 0.88f)
+            PulseRow("سیستم", extras.accent, "پایدار", 1f)
         }
     }
 
@@ -510,6 +513,26 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
                     )
                 }
             }
+            // نمودار زمان پاسخ سرویس
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("زمان پاسخ سرویس", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    Text(
+                        "۲۳ میلی‌ثانیه — پایدار",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Text(
+                    "ms",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            MicroArea(listOf(22f, 18f, 26f, 21f, 19f, 24f, 20f, 23f), scheme.primary)
             // انتخاب بازه به‌روزرسانی — سگمنت هم‌عرض
             Text("به‌روزرسانی خودکار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             Row(
@@ -550,9 +573,24 @@ private fun OverviewTab(vm: AppViewModel, refreshing: Boolean, onRefresh: (Boole
     // ---------- M•R Intelligence: لایه هوشمند روی داده‌ها ----------
     Section("M•R Intelligence") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            InsightRow(MrIcons.Alerts, Color(0xFFFFA94D), "۷ مشتری بیش از ۳۰ روز بدهی دارند", "مجموع مطالبات این گروه: ۲۴۸٬۰۰۰٬۰۰۰ تومان")
-            InsightRow(MrIcons.Customers, scheme.error, "بیشترین بدهکار: هایپر طلایی", "۴۸٬۲۰۰٬۰۰۰ تومان — نزدیک‌ترین سررسید: ۱۸ شهریور")
-            InsightRow(MrIcons.Trend, extras.positive, "روند مطالبات نسبت به دوره قبل", "کاهش ۱۲٪ — بهبود وضعیت وصول مطالبات")
+            InsightRow(
+                MrIcons.Alerts, Color(0xFFFFA94D),
+                "۷ مشتری بیش از ۳۰ روز بدهی دارند",
+                "مجموع مطالبات این گروه: ۲۴۸٬۰۰۰٬۰۰۰ تومان",
+                chart = { MiniAgingBars() },
+            )
+            InsightRow(
+                MrIcons.Customers, scheme.error,
+                "بیشترین بدهکار: هایپر طلایی",
+                "۴۸٬۲۰۰٬۰۰۰ تومان — نزدیک‌ترین سررسید: ۱۸ شهریور",
+                chart = { MiniShareDonut() },
+            )
+            InsightRow(
+                MrIcons.Trend, extras.positive,
+                "روند مطالبات نسبت به دوره قبل",
+                "کاهش ۱۲٪ — بهبود وضعیت وصول مطالبات",
+                chart = { MiniTrendDown(extras.positive) },
+            )
             Text(
                 "تحلیل خودکار روی داده‌های موجود — بدون تغییر هیچ اطلاعاتی",
                 style = MaterialTheme.typography.labelSmall,
@@ -689,23 +727,57 @@ private fun MReportTitle(vm: AppViewModel) {
     }
 }
 
-// ============================================================ آیتم نبض
+// ============================================================ ردیف تابلوی نبض
+/** نقطه وضعیت + برچسب + نوار سیگنال گرادیانی + واژه وضعیت — هم‌زبان با تم */
 @Composable
-private fun PulseItem(label: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        CalmPulse(color, dotSize = 8.dp, enabled = false)
-        Spacer(Modifier.height(6.dp))
+private fun PulseRow(label: String, color: Color, word: String, frac: Float) {
+    val scheme = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        // فقط موارد غیرعادی می‌تپند — پایدارها آرام‌اند
+        CalmPulse(color, dotSize = 8.dp, enabled = frac < 0.99f)
+        Spacer(Modifier.width(8.dp))
         Text(
             label,
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurface,
+            modifier = Modifier.width(52.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .weight(1f)
+                .height(5.dp)
+                .clip(RoundedCornerShape(50))
+                .background(scheme.surfaceVariant.copy(alpha = 0.45f)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(frac)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(50))
+                    .background(Brush.horizontalGradient(listOf(color.copy(alpha = 0.45f), color))),
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            word,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(72.dp),
         )
     }
 }
 
 // ============================================================ ردیف هوشمندی
 @Composable
-private fun InsightRow(icon: ImageVector, tint: Color, title: String, sub: String) {
+private fun InsightRow(
+    icon: ImageVector,
+    tint: Color,
+    title: String,
+    sub: String,
+    chart: (@Composable () -> Unit)? = null,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -725,10 +797,81 @@ private fun InsightRow(icon: ImageVector, tint: Color, title: String, sub: Strin
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
         }
         Spacer(Modifier.width(10.dp))
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        if (chart != null) {
+            Spacer(Modifier.width(10.dp))
+            chart()
+        }
+    }
+}
+
+// ============================================================ میکروچارت‌های هوشمندی
+/** سن بدهی: سه ستون ۳۰-۶۰ / ۶۰-۹۰ / +۹۰ روز — رنگ گرم وضعیت */
+@Composable
+private fun MiniAgingBars() {
+    Canvas(Modifier.size(56.dp, 34.dp)) {
+        val heights = listOf(0.42f, 0.68f, 0.95f)
+        val cols = listOf(Color(0xFFFFA94D), Color(0xFFFF8A5C), Color(0xFFFF6B6B))
+        val w = size.width / 3f
+        heights.forEachIndexed { i, f ->
+            val h = size.height * f
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(cols[i].copy(alpha = 0.40f), cols[i])),
+                topLeft = Offset(i * w + w * 0.24f, size.height - h),
+                size = Size(w * 0.52f, h),
+                cornerRadius = CornerRadius(2.5.dp.toPx()),
+            )
+        }
+    }
+}
+
+/** سهم بزرگ‌ترین بدهکار از کل مطالبات — حلقه با متالیک تم */
+@Composable
+private fun MiniShareDonut() {
+    val extras = LocalThemeExtras.current
+    Canvas(Modifier.size(34.dp)) {
+        val stroke = 5.dp.toPx()
+        val r = (size.minDimension - stroke) / 2f
+        val tl = Offset((size.width - r * 2) / 2f, (size.height - r * 2) / 2f)
+        drawArc(
+            color = extras.hairline,
+            startAngle = 0f, sweepAngle = 360f, useCenter = false,
+            topLeft = tl, size = Size(r * 2, r * 2),
+            style = Stroke(stroke, cap = StrokeCap.Round),
+        )
+        drawArc(
+            color = extras.gold,
+            startAngle = -90f, sweepAngle = 252f, useCenter = false,
+            topLeft = tl, size = Size(r * 2, r * 2),
+            style = Stroke(stroke, cap = StrokeCap.Round),
+        )
+    }
+}
+
+/** روند نزولی مطالبات — بهبود وصول، هم‌رنگ positive تم */
+@Composable
+private fun MiniTrendDown(color: Color) {
+    Canvas(Modifier.size(56.dp, 34.dp)) {
+        val pts = listOf(
+            Offset(0f, size.height * 0.18f),
+            Offset(size.width * 0.3f, size.height * 0.42f),
+            Offset(size.width * 0.55f, size.height * 0.38f),
+            Offset(size.width * 0.8f, size.height * 0.68f),
+            Offset(size.width, size.height * 0.82f),
+        )
+        val path = Path().apply {
+            moveTo(pts.first().x, pts.first().y)
+            for (i in 1 until pts.size) {
+                val mid = (pts[i - 1].x + pts[i].x) / 2f
+                cubicTo(mid, pts[i - 1].y, mid, pts[i].y, pts[i].x, pts[i].y)
+            }
+        }
+        drawPath(path, color = color.copy(alpha = 0.15f), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(path, color = color, style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
+        drawCircle(color, radius = 2.2.dp.toPx(), center = pts.last())
     }
 }
 

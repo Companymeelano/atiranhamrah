@@ -6,6 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.text.font.Font
@@ -328,11 +329,16 @@ private fun extrasFor(id: AppThemeId) = when (id) {
 
 @Composable
 fun AtiranAppTheme(themeId: AppThemeId, content: @Composable () -> Unit) {
+    val scheme = schemeFor(themeId)
     CompositionLocalProvider(LocalThemeExtras provides extrasFor(themeId)) {
         MaterialTheme(
-            colorScheme = schemeFor(themeId),
+            colorScheme = scheme,
             typography = AppTypography,
-            content = content,
-        )
+        ) {
+            // متن‌های بدون رنگ صریح همیشه هم‌رنگ تم می‌شوند — هرگز مشکی پیش‌فرض نه
+            Surface(color = androidx.compose.ui.graphics.Color.Transparent, contentColor = scheme.onBackground) {
+                content()
+            }
+        }
     }
 }
