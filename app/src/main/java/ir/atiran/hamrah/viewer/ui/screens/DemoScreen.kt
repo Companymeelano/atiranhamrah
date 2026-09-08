@@ -1669,19 +1669,19 @@ private fun ProductsTab(onOpen: (P3) -> Unit) {
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth(),
         )
-        Section("سهم فروش دسته‌ها") {
-            DonutSimple(productShare, stagger(0, true))
-        }
-        Section("پرفروش‌های ماه") {
-            Columns3D(topProducts3D, stagger(200, true))
-        }
-        Section("کارت کالا — برای کاردکس لمس کنید") {
+        Section("کارت کالا — برای پرونده و کاردکس لمس کنید") {
             if (list.isEmpty()) {
                 EmptyBox("کالایی یافت نشد", subtitle = "نام دیگری را جستجو کنید")
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 list.forEach { p -> ProductCard(p, onOpen) }
             }
+        }
+        Section("سهم فروش دسته‌ها") {
+            DonutSimple(productShare, stagger(0, true))
+        }
+        Section("پرفروش‌های هفته") {
+            Columns3D(topProducts3D, stagger(200, true))
         }
     }
 }
@@ -1732,6 +1732,39 @@ private fun ProductCard(p: P3, onOpen: (P3) -> Unit) {
             contentDescription = null,
             tint = scheme.primary,
             modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+/** دکمه بستن هماهنگ با تم — Pill شیشه‌ای با گرادیان و فیزیک فشردن */
+@Composable
+private fun MrCloseButton(label: String = "بستن", onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by androidx.compose.foundation.interaction.collectIsPressedAsState(interaction)
+    val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(120), label = "closeScale")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(50))
+            .background(
+                Brush.verticalGradient(
+                    listOf(scheme.primary.copy(alpha = 0.16f), scheme.primary.copy(alpha = 0.05f))
+                )
+            )
+            .border(1.dp, scheme.primary.copy(alpha = 0.45f), RoundedCornerShape(50))
+            .clickable(interactionSource = interaction, indication = null) { onClick(); SoundFx.soft() }
+            .padding(horizontal = 18.dp, vertical = 9.dp),
+    ) {
+        Icon(MrIcons.Close, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(14.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = scheme.primary,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -1976,17 +2009,40 @@ private fun SummaryRow(label: String, value: String) {
     }
 }
 
-// ============================================================ تب هشدارها (Attention Center)
+// ============================================================ تب هشدارها (مرکز توجه)
 @Composable
 private fun AlertsTab(vm: AppViewModel) {
     val scheme = MaterialTheme.colorScheme
-    val extras = LocalThemeExtras.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CalmPulse(Color(0xFFFF6B6B), enabled = vm.experience.motion)
+            // نشان سه‌بعدی مرکز توجه — با هاله نور
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .background(
+                        Brush.radialGradient(listOf(Color(0xFFFF6B6B).copy(alpha = 0.30f), Color.Transparent)),
+                        CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(27.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFFFF6B6B).copy(alpha = 0.32f), Color(0xFFFF6B6B).copy(alpha = 0.10f))
+                            )
+                        )
+                        .border(1.dp, Color(0xFFFF6B6B).copy(alpha = 0.55f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(MrIcons.Alerts, contentDescription = null, tint = statusTone(Color(0xFFFF6B6B)), modifier = Modifier.size(14.dp))
+                }
+            }
             Spacer(Modifier.width(8.dp))
             Text(
-                "Attention Center",
+                "مرکز توجه",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
             )
@@ -1999,20 +2055,55 @@ private fun AlertsTab(vm: AppViewModel) {
         attentionCards.forEach { a ->
             GlassCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CalmPulse(a.color, enabled = vm.experience.motion)
+                    // نشان سه‌بعدی هماهنگ با نوع هشدار + نبض آرام
+                    val tone = statusTone(a.color)
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .background(
+                                Brush.radialGradient(listOf(a.color.copy(alpha = 0.28f), Color.Transparent)),
+                                CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            Modifier
+                                .size(31.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(a.color.copy(alpha = 0.30f), a.color.copy(alpha = 0.10f))
+                                    )
+                                )
+                                .border(1.dp, a.color.copy(alpha = 0.55f), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                when (a.title) {
+                                    "چک سررسید" -> MrIcons.Checks
+                                    "مطالبات" -> MrIcons.Receivables
+                                    else -> MrIcons.Customers
+                                },
+                                contentDescription = null,
+                                tint = tone,
+                                modifier = Modifier.size(15.dp),
+                            )
+                        }
+                        if (vm.experience.motion) {
+                            CalmPulse(a.color, dotSize = 6.dp)
+                        }
+                    }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(a.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(a.desc, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            a.count,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black,
-                            color = a.color,
-                        )
-                    }
+                    Text(
+                        a.count,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = tone,
+                    )
                 }
             }
         }
@@ -2028,11 +2119,39 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
     val cats = listOf("همه", "مهم", "مالی", "چک", "مشتری")
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            "Notifications",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // نشان سه‌بعدی صندوق اعلان
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .background(
+                        Brush.radialGradient(listOf(scheme.primary.copy(alpha = 0.30f), Color.Transparent)),
+                        CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(27.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(scheme.primary.copy(alpha = 0.32f), scheme.primary.copy(alpha = 0.10f))
+                            )
+                        )
+                        .border(1.dp, scheme.primary.copy(alpha = 0.55f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(MrIcons.Notifications, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(14.dp))
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "اعلان‌ها",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+            )
+        }
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2058,7 +2177,42 @@ private fun NotificationsTab(vm: AppViewModel, onOpenAlerts: () -> Unit) {
                     .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
                     .padding(horizontal = 12.dp, vertical = 11.dp),
             ) {
-                CalmPulse(n.color, dotSize = 8.dp, enabled = false)
+                // نشان سه‌بعدی هماهنگ با دسته اعلان
+                val tone = statusTone(n.color)
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .background(
+                            Brush.radialGradient(listOf(n.color.copy(alpha = 0.26f), Color.Transparent)),
+                            CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        Modifier
+                            .size(25.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(n.color.copy(alpha = 0.28f), n.color.copy(alpha = 0.10f))
+                                )
+                            )
+                            .border(1.dp, n.color.copy(alpha = 0.55f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            when (n.cat) {
+                                "چک" -> MrIcons.Checks
+                                "مالی" -> MrIcons.Receivables
+                                "مهم" -> MrIcons.Alerts
+                                else -> MrIcons.Customers
+                            },
+                            contentDescription = null,
+                            tint = tone,
+                            modifier = Modifier.size(13.dp),
+                        )
+                    }
+                }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(n.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
@@ -2219,31 +2373,58 @@ private fun Product360(p: P3, onDismiss: () -> Unit) {
     val idx = topProducts3D.indexOf(p).coerceAtLeast(0)
     val price: Long = 850_000L + idx * 120_000L
     val totalStock = (p.v * 12).toInt()
+    var cardexOpen by remember { mutableStateOf(false) }
+    var range by remember { mutableStateOf("ماه") }
+    val cardexData = mapOf(
+        "هفته" to listOf(
+            CardexEntry("۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", "گردش", extras.accent),
+            CardexEntry("۰۵ شهریور", "فروش — پخش نگین", "−۱۲۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۳ شهریور", "فروش — هایپر طلایی", "−۸۵ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", "ورود", extras.positive),
+        ),
+        "ماه" to listOf(
+            CardexEntry("۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", "گردش", extras.accent),
+            CardexEntry("۰۵ شهریور", "فروش — پخش نگین", "−۱۲۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۳ شهریور", "فروش — هایپر طلایی", "−۸۵ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", "ورود", extras.positive),
+            CardexEntry("۲۸ مرداد", "فروش — مارکت الماس", "−۹۵ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۲۴ مرداد", "خرید از باغداران", "+۳۱۰ کیلوگرم", "ورود", extras.positive),
+            CardexEntry("۲۰ مرداد", "فروش — هایپر طلایی", "−۱۴۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۱۵ مرداد", "مرجوعی کیفیت", "−۲۵ کیلوگرم", "مرجوعی", scheme.error),
+        ),
+        "سال" to listOf(
+            CardexEntry("۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", "گردش", extras.accent),
+            CardexEntry("۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", "ورود", extras.positive),
+            CardexEntry("۲۴ مرداد", "خرید از باغداران", "+۳۱۰ کیلوگرم", "ورود", extras.positive),
+            CardexEntry("۱۰ مرداد", "فروش عمده — پخش نگین", "−۴۸۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۲ مرداد", "ورود فصل برداشت", "+۸۵۰ کیلوگرم", "ورود", extras.positive),
+            CardexEntry("۱۸ تیر", "فروش — هایپر طلایی", "−۲۶۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۵ تیر", "فروش — مارکت الماس", "−۱۹۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۲۲ خرداد", "گردش به فروشگاه", "۴۵ کیلوگرم", "گردش", extras.accent),
+            CardexEntry("۱۲ خرداد", "خرید از باغداران", "+۴۲۰ کیلوگرم", "ورود", extras.positive),
+            CardexEntry("۳۰ اردیبهشت", "فروش عمده — هایپر طلایی", "−۵۳۰ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۱۵ اردیبهشت", "فروش — پخش نگین", "−۱۷۵ کیلوگرم", "فروش", scheme.error),
+            CardexEntry("۰۲ فروردین", "موجودی اول دوره", "۵۲۰ کیلوگرم", "افتتاح", extras.accent),
+        ),
+    )
+    val entries = cardexData[range] ?: emptyList()
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
+                .fillMaxWidth(0.96f)
                 .clip(RoundedCornerShape(24.dp))
                 .background(scheme.surface.copy(alpha = 0.97f))
                 .border(1.dp, extras.hairline, RoundedCornerShape(24.dp))
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
+            // سربرگ + دکمه بستن
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(p.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     Text("کد کالا: ۱۰۲۳" + (idx + 4) + " — گروه: خشکبار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(extras.positive.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                ) {
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(extras.positive))
-                    Spacer(Modifier.width(5.dp))
-                    Text("فعال", style = MaterialTheme.typography.labelSmall, color = extras.positive)
-                }
+                MrCloseButton { onDismiss() }
             }
             NumberHero(formatInt(totalStock.toLong()), unit = "موجودی کل (کیلوگرم)", color = scheme.primary, fontSize = 30.sp)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2272,19 +2453,114 @@ private fun Product360(p: P3, onDismiss: () -> Unit) {
                     }
                 }
             }
-            // کاردکس و گردش کالا — داخل پرونده
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("کاردکس و گردش", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
-                CardexRow(MrIcons.Sync, "۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", extras.positive)
-                CardexRow(MrIcons.Excel, "۰۳ شهریور", "فروش — هایپر طلایی", "−۸۵ کیلوگرم", scheme.error)
-                CardexRow(MrIcons.Excel, "۰۵ شهریور", "فروش — پخش نگین", "−۱۲۰ کیلوگرم", scheme.error)
-                CardexRow(MrIcons.Trend, "۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", extras.accent)
-                Text(
-                    "روند گردش ماهانه",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
+            // دکمه کاردکس — کاربر خودش تصمیم می‌گیرد
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (cardexOpen) Brush.verticalGradient(
+                            listOf(scheme.primary.copy(alpha = 0.20f), scheme.primary.copy(alpha = 0.06f))
+                        ) else SolidColor(extras.glass)
+                    )
+                    .border(
+                        1.dp,
+                        if (cardexOpen) scheme.primary.copy(alpha = 0.5f) else extras.hairline,
+                        RoundedCornerShape(14.dp),
+                    )
+                    .clickable { cardexOpen = !cardexOpen; SoundFx.soft() }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Box(
+                    Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.08f))
+                            )
+                        )
+                        .border(1.dp, scheme.primary.copy(alpha = 0.45f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(MrIcons.Excel, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(15.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "کاردکس و گردش کالا",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (cardexOpen) scheme.primary else scheme.onSurface,
+                    )
+                    Text(
+                        if (cardexOpen) "برای بستن دوباره لمس کنید" else "گردش ورود، فروش و انبار — لمس کنید",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    if (cardexOpen) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = scheme.primary,
+                    modifier = Modifier.size(20.dp),
                 )
-                MicroArea(listOf(120f, 95f, 140f, 110f, 160f, 130f, 175f, 150f), scheme.primary)
+            }
+            // کاردکس تاشو — فیلتر زمانی + اسکرول
+            if (cardexOpen) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("هفته", "ماه", "سال").forEach { r ->
+                            val sel = range == r
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (sel) Brush.verticalGradient(
+                                            listOf(scheme.primary.copy(alpha = 0.24f), scheme.primary.copy(alpha = 0.08f))
+                                        ) else SolidColor(extras.glass)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (sel) scheme.primary.copy(alpha = 0.5f) else extras.hairline,
+                                        RoundedCornerShape(12.dp),
+                                    )
+                                    .clickable { range = r; SoundFx.soft() }
+                                    .padding(vertical = 7.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(MrIcons.Filter, contentDescription = null, tint = if (sel) scheme.primary else scheme.onSurfaceVariant, modifier = Modifier.size(12.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(
+                                        r,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (sel) scheme.primary else scheme.onSurfaceVariant,
+                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Column(
+                        Modifier
+                            .heightIn(max = 260.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        entries.forEach { e ->
+                            CardexRow(e.icon(), e.date, e.title, e.qty, e.color)
+                        }
+                        Text(
+                            "روند گردش " + (if (range == "سال") "سالانه" else if (range == "ماه") "ماهانه" else "هفتگی"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                        )
+                        MicroArea(listOf(120f, 95f, 140f, 110f, 160f, 130f, 175f, 150f), scheme.primary)
+                    }
+                }
             }
             Row(
                 Modifier.fillMaxWidth(),
@@ -2296,6 +2572,19 @@ private fun Product360(p: P3, onDismiss: () -> Unit) {
             }
         }
     }
+}
+
+/** رکورد کاردکس با آیکون و رنگ مرتبط */
+private data class CardexEntry(
+    val date: String, val title: String, val qty: String,
+    val type: String, val color: Color,
+)
+
+private fun CardexEntry.icon(): ImageVector = when (type) {
+    "ورود" -> MrIcons.Sync
+    "فروش" -> MrIcons.Excel
+    "مرجوعی" -> MrIcons.Alerts
+    else -> MrIcons.Trend
 }
 
 // ============================================================ پرونده مشتری ۳۶۰
@@ -2328,10 +2617,9 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
             ) {
                 TopAppBar(
                     title = { Text("پرونده دیجیتال مشتری", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "بازگشت")
-                        }
+                    actions = {
+                        MrCloseButton { onDismiss() }
+                        Spacer(Modifier.width(10.dp))
                     },
                 )
                 Column(
