@@ -78,6 +78,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -96,6 +97,7 @@ import androidx.compose.ui.window.DialogProperties
 import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.components.AmbientBackground
 import ir.atiran.hamrah.viewer.ui.components.CalmPulse
+import ir.atiran.hamrah.viewer.ui.components.EmptyBox
 import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
@@ -660,27 +662,51 @@ private fun MReportTitle(vm: AppViewModel) {
 }
 
 // ============================================================ ردیف تابلوی نبض
-/** نشان آیکون‌دار + برچسب + نوار سیگنال گرادیانی + واژه وضعیت — هم‌زبان با تم */
+/** رنگ وضعیت هماهنگ با تم — در تم‌های روشن تیره/اشباع می‌شود تا خوانا بماند */
 @Composable
-private fun PulseRow(icon: ImageVector, label: String, color: Color, word: String, frac: Float) {
+private fun statusTone(base: Color): Color {
+    val light = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    return if (light) lerp(base, Color.Black, 0.34f) else base
+}
+
+/** نشان درخشان + برچسب تک‌خطی + نوار سیگنال گرادیانی + واژه وضعیت — هم‌زبان با تم */
+@Composable
+private fun PulseRow(icon: ImageVector, label: String, base: Color, word: String, frac: Float) {
     val scheme = MaterialTheme.colorScheme
+    val color = statusTone(base)
     Row(verticalAlignment = Alignment.CenterVertically) {
+        // نشان درخشان: هاله نور پشت گوی شیشه‌ای
         Box(
             Modifier
-                .size(26.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.13f))
-                .border(1.dp, color.copy(alpha = 0.30f), CircleShape),
+                .size(32.dp)
+                .background(
+                    Brush.radialGradient(listOf(color.copy(alpha = 0.30f), Color.Transparent)),
+                    CircleShape,
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Box(
+                Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(color.copy(alpha = 0.30f), color.copy(alpha = 0.12f))
+                        )
+                    )
+                    .border(1.dp, color.copy(alpha = 0.55f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(13.dp))
+            }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
             color = scheme.onSurface,
-            modifier = Modifier.width(58.dp),
+            maxLines = 1,
+            modifier = Modifier.width(68.dp),
         )
         Spacer(Modifier.width(8.dp))
         Box(
@@ -701,10 +727,11 @@ private fun PulseRow(icon: ImageVector, label: String, color: Color, word: Strin
         Spacer(Modifier.width(8.dp))
         Text(
             word,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             color = color,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(78.dp),
+            maxLines = 1,
+            modifier = Modifier.width(80.dp),
         )
     }
 }
@@ -1441,128 +1468,257 @@ private fun Columns3D(items: List<P3>, progress: Float) {
 private fun CustomersTab(onOpen: (CustomerD) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    Section("پرونده مشتریان — برای مشاهده ۳۶۰ درجه لمس کنید") {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            customersDemo.forEach { c ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(extras.glass)
-                        .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
-                        .clickable { onOpen(c); SoundFx.soft() }
-                        .padding(horizontal = 12.dp, vertical = 11.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(extras.goldGradient)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            c.name.take(1),
-                            color = extras.goldOn,
-                            fontWeight = FontWeight.Black,
-                        )
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(c.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                c.tag,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = extras.accent,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(extras.accent.copy(alpha = 0.12f))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                            )
-                        }
-                        Spacer(Modifier.height(5.dp))
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(scheme.surfaceVariant)
-                        ) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(c.share)
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Brush.horizontalGradient(extras.goldGradient))
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            c.balance,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (c.balance.startsWith("+")) extras.positive else scheme.error,
-                        )
-                        Text("مانده حساب", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-                    }
-                }
+    var q by remember { mutableStateOf("") }
+    val list = customersDemo.filter {
+        q.isBlank() || it.name.contains(q, true) || it.tag.contains(q, true)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("پرونده مشتریان", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        // جستجوی زنده — هم‌زبان با تم
+        OutlinedTextField(
+            value = q,
+            onValueChange = { q = it },
+            placeholder = { Text("جستجوی مشتری...") },
+            singleLine = true,
+            leadingIcon = { Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary) },
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Section("برای مشاهده پرونده ۳۶۰ درجه لمس کنید") {
+            if (list.isEmpty()) {
+                EmptyBox("مشتری‌ای یافت نشد", subtitle = "نام یا سطح دیگری را جستجو کنید")
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                list.forEach { c -> CustomerCard(c, onOpen) }
             }
         }
     }
 }
 
-// ============================================================ تب کالاها
+/** کارت یکدست مشتری — گوی سه‌بعدی هم‌رنگ تم + نام تک‌خطی + سهم + مانده رنگ‌بندی‌شده */
 @Composable
-private fun ProductsTab(onOpen: (P3) -> Unit) {
-    val g1 = stagger(0, true)
+private fun CustomerCard(c: CustomerD, onOpen: (CustomerD) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    Section("سهم فروش دسته‌ها") {
-        DonutSimple(productShare, g1)
-    }
-    Section("پرفروش‌های ماه") {
-        Columns3D(topProducts3D, stagger(200, true))
-    }
-    // کارت کالا — کلیک → Product 360
-    Section("کارت کالا") {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            topProducts3D.take(4).forEach { p ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(extras.glass)
-                        .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
-                        .clickable { onOpen(p); SoundFx.soft() }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(MrIcons.Products, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                        Text("گروه: خشکبار — سهم فروش " + p.v.toInt() + "٪", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
+    val positive = c.balance.startsWith("+")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(extras.glass)
+            .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+            .clickable { onOpen(c); SoundFx.soft() }
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    ) {
+        // گوی سه‌بعدی مشتری — نور از بالا با رنگ تم
+        Box(
+            Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.08f))
                     )
-                }
+                )
+                .border(1.dp, scheme.primary.copy(alpha = 0.45f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                c.name.take(1),
+                color = scheme.primary,
+                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    c.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    c.tag,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(scheme.primary.copy(alpha = 0.12f))
+                        .border(1.dp, scheme.primary.copy(alpha = 0.30f), RoundedCornerShape(50))
+                        .padding(horizontal = 7.dp, vertical = 1.dp),
+                )
+            }
+            Spacer(Modifier.height(5.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(scheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(c.share)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(50))
+                        .background(Brush.horizontalGradient(extras.goldGradient))
+                )
             }
         }
+        Spacer(Modifier.width(10.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                c.balance,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                color = if (positive) extras.positive else scheme.error,
+            )
+            Text("مانده", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ProductsTab(onOpen: (P3) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    var q by remember { mutableStateOf("") }
+    val list = topProducts3D.filter { q.isBlank() || it.name.contains(q, true) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("کالاها و موجودی", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        // جستجوی زنده کالا
+        OutlinedTextField(
+            value = q,
+            onValueChange = { q = it },
+            placeholder = { Text("جستجوی کالا...") },
+            singleLine = true,
+            leadingIcon = { Icon(MrIcons.Search, contentDescription = null, tint = scheme.primary) },
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Section("سهم فروش دسته‌ها") {
+            DonutSimple(productShare, stagger(0, true))
+        }
+        Section("پرفروش‌های ماه") {
+            Columns3D(topProducts3D, stagger(200, true))
+        }
+        Section("کارت کالا — برای کاردکس لمس کنید") {
+            if (list.isEmpty()) {
+                EmptyBox("کالایی یافت نشد", subtitle = "نام دیگری را جستجو کنید")
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                list.forEach { p -> ProductCard(p, onOpen) }
+            }
+        }
+        Section("کاردکس و گردش — پسته اکبری") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CardexRow(MrIcons.Trend, "۰۱ شهریور", "ورود به انبار مرکزی", "+۲۴۰ کیلوگرم", extras.positive)
+                CardexRow(MrIcons.Excel, "۰۳ شهریور", "فروش — هایپر طلایی", "−۸۵ کیلوگرم", scheme.error)
+                CardexRow(MrIcons.Excel, "۰۵ شهریور", "فروش — پخش نگین", "−۱۲۰ کیلوگرم", scheme.error)
+                CardexRow(MrIcons.Sync, "۰۷ شهریور", "گردش به انبار شعبه", "۶۰ کیلوگرم", extras.accent)
+                Text(
+                    "گردش ماهانه کالا",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+                MicroArea(listOf(120f, 95f, 140f, 110f, 160f, 130f, 175f, 150f), scheme.primary)
+            }
+        }
+    }
+}
+
+/** کارت یکدست کالا — گوی سه‌بعدی + مشخصات + سهم فروش */
+@Composable
+private fun ProductCard(p: P3, onOpen: (P3) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val extras = LocalThemeExtras.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(extras.glass)
+            .border(1.dp, extras.hairline, RoundedCornerShape(16.dp))
+            .clickable { onOpen(p); SoundFx.soft() }
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    ) {
+        // گوی سه‌بعدی کالا
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(scheme.primary.copy(alpha = 0.30f), scheme.primary.copy(alpha = 0.08f))
+                    )
+                )
+                .border(1.dp, scheme.primary.copy(alpha = 0.45f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(MrIcons.Products, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(17.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                "گروه: خشکبار · سهم فروش " + p.v.toInt() + "٪",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = null,
+            tint = scheme.primary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+/** ردیف کاردکس — نشان رنگی هماهنگ با نوع تراکنش */
+@Composable
+private fun CardexRow(icon: ImageVector, date: String, title: String, qty: String, color: Color) {
+    val c = statusTone(color)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+            .border(1.dp, LocalThemeExtras.current.hairline, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        Box(
+            Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(listOf(c.copy(alpha = 0.28f), c.copy(alpha = 0.10f)))
+                )
+                .border(1.dp, c.copy(alpha = 0.50f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = c, modifier = Modifier.size(13.dp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text(date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(
+            qty,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = c,
+        )
     }
 }
 

@@ -299,8 +299,12 @@ fun GlassAction(
                 }
                 .size(50.dp)
                 .clip(CircleShape)
-                .background(extras.glassStrong)
-                .border(1.dp, extras.hairline, CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(glow.copy(alpha = 0.22f), glow.copy(alpha = 0.07f))
+                    )
+                )
+                .border(1.dp, glow.copy(alpha = 0.42f), CircleShape)
                 .clickable(
                     interactionSource = interaction,
                     indication = null,
@@ -308,12 +312,12 @@ fun GlassAction(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            // هاله بسیار کم پشت آیکون — با فشردن محو می‌شود
+            // هاله درخشان پشت آیکون — با فشردن محو می‌شود
             Box(
                 Modifier
-                    .size(27.dp)
+                    .size(30.dp)
                     .clip(CircleShape)
-                    .background(glow.copy(alpha = haloAlpha))
+                    .background(glow.copy(alpha = haloAlpha + 0.04f))
             )
             Icon(icon, contentDescription = label, tint = glow, modifier = Modifier.size(21.dp))
         }
