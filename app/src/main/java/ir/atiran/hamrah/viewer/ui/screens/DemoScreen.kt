@@ -106,7 +106,7 @@ import ir.atiran.hamrah.viewer.ui.components.EmptyBox
 import ir.atiran.hamrah.viewer.ui.components.GlassAction
 import ir.atiran.hamrah.viewer.ui.components.GlassCard
 import ir.atiran.hamrah.viewer.ui.components.LightLine
-import ir.atiran.hamrah.viewer.ui.components.MrCloseButton
+import ir.atiran.hamrah.viewer.ui.components.MrPillButton
 import ir.atiran.hamrah.viewer.ui.components.MrIcons
 import ir.atiran.hamrah.viewer.ui.components.MrOrbButton
 import ir.atiran.hamrah.viewer.ui.components.MrSubtitle
@@ -2394,7 +2394,7 @@ private fun Product360(p: P3, onDismiss: () -> Unit) {
                     Text(p.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     Text("کد کالا: ۱۰۲۳" + (idx + 4) + " — گروه: خشکبار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                 }
-                MrCloseButton { onDismiss() }
+                MrPillButton(label = "بستن", onClick = { onDismiss() }, icon = MrIcons.Close)
             }
             NumberHero(formatInt(totalStock.toLong()), unit = "موجودی کل (کیلوگرم)", color = scheme.primary, fontSize = 30.sp)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2588,7 +2588,7 @@ private fun Customer360(c: CustomerD, onDismiss: () -> Unit) {
                 TopAppBar(
                     title = { Text("پرونده دیجیتال مشتری", fontWeight = FontWeight.Bold) },
                     actions = {
-                        MrCloseButton { onDismiss() }
+                        MrPillButton(label = "بستن", onClick = { onDismiss() }, icon = MrIcons.Close)
                         Spacer(Modifier.width(10.dp))
                     },
                 )
