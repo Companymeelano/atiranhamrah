@@ -77,6 +77,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
@@ -1742,7 +1743,7 @@ private fun MrCloseButton(label: String = "بستن", onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by androidx.compose.foundation.interaction.collectIsPressedAsState(interaction)
+    val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.94f else 1f, tween(120), label = "closeScale")
     Row(
         verticalAlignment = Alignment.CenterVertically,
