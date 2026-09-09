@@ -44,7 +44,7 @@ import ir.atiran.hamrah.viewer.ui.components.LoadingBox
 import ir.atiran.hamrah.viewer.ui.components.SearchField
 import ir.atiran.hamrah.viewer.ui.components.fmt
 
-private const val PAGE_SIZE = 50
+private const val PAGE_SIZE = 60
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

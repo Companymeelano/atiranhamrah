@@ -224,6 +224,60 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ------------------------------------------ دروازهٔ دادهٔ هوش مصنوعی (§۲۰/§۲۳ اسپک)
+    /**
+     * کوئری عمومی فقط-خواندنی — تنها مسیر AI به داده؛
+     * اعتبارسنجی داخل SqlServerDb انجام می‌شود (فقط SELECT/WITH).
+     */
+    suspend fun queryReadOnly(sql: String): ir.atiran.hamrah.viewer.data.SqlServerDb.QueryResult? = try {
+        db?.queryReadOnly(sql)
+    } catch (_: Throwable) {
+        null
+    }
+
+    /** اطلاعات شرکت (§۱۵ اسپک) — TBL_Func_CompanyName با فالبک بی‌کرش */
+    suspend fun companyName(): String? = try {
+        db?.companyInfo()
+    } catch (_: Throwable) {
+        null
+    }
+
+    /** کشِ هشدارِ اسکیمای فشرده برای هوش مصنوعی (§۲۱) */
+    @Volatile
+    private var schemaHintCache: String? = null
+
+    /**
+     * شِمای واقعی دیتابیس برای AI (§۲۱ اسپک): جداول نگاشت‌شده + ستون‌های واقعی‌شان
+     * از INFORMATION_SCHEMA — تا AI هرگز نام ستون را حدس نزند.
+     */
+    suspend fun aiSchemaHint(): String {
+        schemaHintCache?.let { return it }
+        val d = db ?: return ""
+        val sb = StringBuilder()
+        try {
+            val m = sectionMap.value
+            val refs = linkedSetOf(m.customers, m.products, m.invoices, m.checks, m.banks)
+                .filterNotNull().filter { it.isNotBlank() }
+            for (ref in refs.take(8)) {
+                val parts = ref.split('.')
+                if (parts.size != 2) continue
+                try {
+                    val cols = d.columns(parts[0], parts[1])
+                    sb.append(parts[1]).append("(")
+                        .append(cols.joinToString(",") { it.name }.take(420))
+                        .append(")\n")
+                } catch (_: Throwable) {
+                    // جدول در دسترس نیست — بی‌صدا رد شود
+                }
+            }
+        } catch (_: Throwable) {
+            // نگاشت هنوز آماده نیست
+        }
+        val hint = sb.toString()
+        if (hint.isNotBlank()) schemaHintCache = hint
+        return hint
+    }
+
     /** تنظیمات دستیار هوشمند «پسته» */
     var ai by mutableStateOf(AiSettings())
         private set

@@ -351,7 +351,7 @@ fun LoginScreen(vm: AppViewModel) {
                                     vm.login(cfg)
                                     SoundFx.success()
                                 } catch (e: Throwable) {
-                                    error = SqlServerDb.friendly(e)
+                                    error = SqlServerDb.friendly(e) + " [" + SqlServerDb.codeOf(e) + "]"
                                     errorRaw = (e.message ?: e.toString()).replace("\n", " ").take(220)
                                 } finally {
                                     busy = false
@@ -400,7 +400,7 @@ fun LoginScreen(vm: AppViewModel) {
                                     SoundFx.soft()
                                 } catch (e: Throwable) {
                                     diag = listOf(
-                                        DiagStep(false, "شروع عیب‌یابی", SqlServerDb.friendly(e))
+                                        DiagStep(false, "شروع عیب‌یابی", "[" + SqlServerDb.codeOf(e) + "] " + SqlServerDb.friendly(e))
                                     )
                                 } finally {
                                     diagBusy = false

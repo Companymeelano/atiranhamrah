@@ -115,7 +115,7 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                         context = appCtx,
                         userMessage = text,
                         history = history,
-                        system = LlmClient.systemPrompt(vm.ai.userName, vm.ai.mode),
+                        system = LlmClient.systemPrompt(vm.ai.userName, vm.ai.mode, vm.aiSchemaHint()),
                         customKey = vm.ai.apiKey.takeIf { it.isNotBlank() },
                     )
                 } catch (_: Throwable) {

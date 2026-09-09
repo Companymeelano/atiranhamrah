@@ -5,7 +5,7 @@ import kotlinx.coroutines.withContext
 import java.sql.Connection
 import java.util.Properties
 
-class AtiranDbException(message: String) : Exception(message)
+class AtiranDbException(message: String, val code: String = "SQL_ERROR") : Exception(message)
 
 /**
  * اتصال مستقیم و فقط-خواندنی به Microsoft SQL Server از روی درایور JDBC.
@@ -80,6 +80,59 @@ class SqlServerDb(private val cfg: DbSettings) {
             }
         }
 
+        /** دستهٔ خطا طبق تاکسونومی §۲۴ اسپک M•R — برای گزارش پشتیبانی */
+        fun codeOf(e: Throwable): String {
+            val m = (e.message ?: "") + " " + e.toString()
+            return when {
+                e is AtiranDbException -> e.code
+                m.contains("Login failed", true) -> "LOGIN_FAILED"
+                m.contains("not associated with a trusted", true) -> "AUTH_ERROR"
+                m.contains("Cannot open database", true) -> "DATABASE_NOT_FOUND"
+                m.contains("Invalid object name", true) -> "TABLE_NOT_FOUND"
+                m.contains("Invalid column", true) -> "COLUMN_NOT_FOUND"
+                m.contains("UnknownHost", true) || m.contains("Unknown host", true) -> "DNS_ERROR"
+                m.contains("No route to host", true) -> "NO_ROUTE"
+                m.contains("Connection refused", true) -> "TCP_REFUSED"
+                m.contains("timed out", true) || m.contains("Timeout", true) ||
+                    m.contains("did not return a response", true) -> "TCP_TIMEOUT"
+                m.contains("SSL", true) || m.contains("TLS", true) ||
+                    m.contains("secure connection", true) -> "TLS_ERROR"
+                m.contains("The TCP/IP connection to the host", true) -> "NETWORK_ERROR"
+                else -> "SQL_ERROR"
+            }
+        }
+
+        /** کلیدواژه‌های ممنوع در حالت فقط-خواندنی (§۲۰ اسپک) */
+        private val FORBIDDEN_SQL = arrayOf(
+            "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "MERGE",
+            "EXEC", "EXECUTE", "CREATE", "GRANT", "REVOKE", "DENY",
+            "BACKUP", "RESTORE", "SHUTDOWN", "KILL",
+            "OPENROWSET", "OPENDATASOURCE",
+        )
+
+        /** کلیدهای مرتب‌سازی پایدار برای صفحه‌بندی (§۱۰/§۱۱ اسپک) */
+        private val KEY_ORDER_COLUMNS = setOf("SHMO", "SHKA", "shfacfo", "id", "ID", "code", "Code")
+
+        /**
+         * اعتبارسنجی فقط-خواندنی (§۲۰/§۲۳): فقط SELECT / WITH مجاز است؛
+         * هر دستور نوشتن/مدیریت رد می‌شود و چند-دستوری ممنوع است.
+         */
+        fun validateReadOnly(sql: String): String? {
+            val t = sql.trim()
+            if (t.isBlank()) return "کوئری خالی است"
+            val body = t.trimEnd(';').trim()
+            if (body.contains(';')) return "چند دستور در یک کوئری مجاز نیست"
+            val head = body.substringBefore(' ').uppercase()
+            if (head != "SELECT" && head != "WITH") return "فقط SELECT یا WITH مجاز است"
+            val upper = body.uppercase()
+            for (kw in FORBIDDEN_SQL) {
+                if (Regex("(?<![A-Za-z0-9_#])" + kw + "(?![A-Za-z0-9_])").containsMatchIn(upper)) {
+                    return "دستور «$kw» در حالت فقط-خواندنی مجاز نیست"
+                }
+            }
+            return null
+        }
+
         /** escape یک شناسه داخل براکت */
         private fun q(ident: String): String = "[" + ident.replace("]", "]]") + "]"
     }
@@ -133,7 +186,7 @@ class SqlServerDb(private val cfg: DbSettings) {
             instance != null && (portField.isBlank() || portField == "1433") -> null
             else -> portField.ifBlank { "1433" }.toIntOrNull() ?: 1433
         }
-        return Target(host, port, instance)
+        return Target(host, port, instance?.takeIf { port == null })
     }
 
     private val target: Target = parseTarget()
@@ -243,7 +296,7 @@ class SqlServerDb(private val cfg: DbSettings) {
      */
     private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
         var last: Throwable? = null
-        for (m in intArrayOf(1, 0, 2, 3, 4, 5)) {
+        for (m in intArrayOf(0, 2, 3, 4, 5, 1)) {
             try {
                 connectOnce(m, timeoutSec, port).use { }
                 return null
@@ -389,8 +442,8 @@ class SqlServerDb(private val cfg: DbSettings) {
             }
         }
         var last: Throwable? = null
-        // ترتیب: jTDS بدون TLS (اثبات‌شده با پروب CI) → الگوی ویندوز → TLS → TLS/JSSE
-        for (m in intArrayOf(1, 0, 2, 3, 4, 5)) {
+        // ترتیب (§۴ اسپک): درایور مایکروسافت اصلی → تنوع‌های TLS → jTDS فقط fallback
+        for (m in intArrayOf(0, 2, 3, 4, 5, 1)) {
             try {
                 return connectOnce(m).also {
                     mode = m
@@ -452,7 +505,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         } catch (e: Throwable) {
             steps += DiagStep(
                 false, "پیدا کردن سرور",
-                "آدرس «" + serverHost + "» در شبکه پیدا نشد",
+                "[DNS_ERROR] آدرس «" + serverHost + "» در شبکه پیدا نشد",
                 "IP یا نام سرور را دقیق بررسی کنید. اگر از اینترنت وصل می‌شوید، سرور باید با IP عمومی منتشر شده باشد.",
             )
             return@withContext steps
@@ -469,7 +522,7 @@ class SqlServerDb(private val cfg: DbSettings) {
             } catch (e: Throwable) {
                 steps += DiagStep(
                     false, "درگاه اتصال (TCP $portNum)",
-                    "اتصال به پورت ممکن نشد: " + shortErr(e),
+                    "[NETWORK_ERROR] اتصال به پورت ممکن نشد: " + shortErr(e),
                     "۱) در SQL Server Configuration Manager پروتکل TCP/IP را فعال و سرویس SQL را ری‌استارت کنید. ۲) فایروال ویندوز و مودم/روتر را برای این پورت باز کنید. ۳) اگر پورت دیگری است، در فیلد پورت همان را وارد کنید.",
                 )
                 return@withContext steps
@@ -540,7 +593,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         try {
             var connectedMode = -1
             var modeErr: Throwable? = null
-            for (m in intArrayOf(1, 0, 2, 3, 4, 5)) {
+            for (m in intArrayOf(0, 2, 3, 4, 5, 1)) {
                 try {
                     connectOnce(m, 15).use { }
                     connectedMode = m
@@ -571,7 +624,58 @@ class SqlServerDb(private val cfg: DbSettings) {
                 else -> steps += DiagStep(true, "رمزنگاری اتصال (TLS)", "دست‌دادن امن با سرور موفق بود")
             }
             steps += DiagStep(true, "ورود با نام کاربری و رمز", "اعتبارنامه پذیرفته شد")
-            steps += DiagStep(true, "باز کردن دیتابیس «" + cfg.database.trim() + "»", "دیتابیس در دسترس است")
+            // §۵/§۶ اسپک: دیتابیس فعال + نام سرور + نسخه — هر مرحله نتیجهٔ مستقل
+            try {
+                val info = withConn { c -> firstQuery(c) }
+                steps += DiagStep(true, "دیتابیس فعال", info.first + " — با دیتابیس انتخابی یکی است ✓")
+                steps += DiagStep(true, "نام سرور SQL (@@SERVERNAME)", info.second.ifBlank { "—" })
+                steps += DiagStep(true, "نسخهٔ SQL Server (@@VERSION)", info.third.ifBlank { "—" })
+            } catch (e: Throwable) {
+                steps += DiagStep(
+                    false, "دیتابیس فعال",
+                    "[DATABASE_NOT_FOUND] " + shortErr(e),
+                    "نام دیتابیس (Atiran2) و دسترسی این کاربر به آن را بررسی کنید.",
+                )
+                return@withContext steps
+            }
+            // §۵ گام ۱۰ / §۷: کشف اسکیمای دیتابیس — همهٔ جداول واقعی + تعداد رکورد
+            try {
+                val ov = overview()
+                val totalRows = ov.tables.sumOf { it.rows }
+                steps += DiagStep(
+                    true, "کشف اسکیمای دیتابیس",
+                    ir.atiran.hamrah.viewer.utils.Jalali.fa(ov.tables.size.toString()) + " جدول واقعی — مجموع " +
+                        ir.atiran.hamrah.viewer.utils.Jalali.fa(totalRows.toString()) + " رکورد" +
+                        (ov.sizeMb?.let { " · حجم تقریبی " + ir.atiran.hamrah.viewer.utils.Jalali.fa(String.format("%.0f", it)) + " مگابایت" } ?: ""),
+                )
+            } catch (e: Throwable) {
+                steps += DiagStep(false, "کشف اسکیمای دیتابیس", "[SQL_ERROR] " + shortErr(e))
+            }
+            // §۸: کشف ستون‌های واقعی از INFORMATION_SCHEMA
+            try {
+                val cust = findTable("CUSTOMERS", "customers", "Customer")
+                val nCols = cust?.let { ref ->
+                    val parts = ref.split('.')
+                    if (parts.size == 2) columns(parts[0], parts[1]).size else null
+                }
+                steps += DiagStep(
+                    nCols != null,
+                    "کشف ستون‌های جدول‌ها",
+                    if (nCols != null) {
+                        "جدول $cust — " + ir.atiran.hamrah.viewer.utils.Jalali.fa(nCols.toString()) + " ستون واقعی از INFORMATION_SCHEMA"
+                    } else {
+                        "[TABLE_NOT_FOUND] جدول مشتریان (CUSTOMERS) در این دیتابیس یافت نشد"
+                    },
+                )
+            } catch (e: Throwable) {
+                steps += DiagStep(false, "کشف ستون‌های جدول‌ها", "[SQL_ERROR] " + shortErr(e))
+            }
+            // §۱۵: اطلاعات شرکت — تابع جدولی Atiran با فالبک بی‌کرش
+            val co = companyInfo()
+            steps += DiagStep(
+                co != null, "اطلاعات شرکت",
+                co ?: "تابع TBL_Func_CompanyName در دسترس نیست — برنامه بدون آن هم کار می‌کند",
+            )
             steps += DiagStep(true, "نتیجه نهایی", "اتصال کامل برقرار شد — می‌توانید وارد شوید")
         } catch (e: Throwable) {
             val m = (e.message ?: "") + " " + e.toString()
@@ -579,7 +683,7 @@ class SqlServerDb(private val cfg: DbSettings) {
                 m.contains("Login failed", true) -> {
                     steps += DiagStep(true, "رمزنگاری اتصال (TLS)", "دست‌دادن با سرور موفق بود")
                     steps += DiagStep(
-                        false, "ورود با نام کاربری و رمز", "سرور ورود را رد کرد",
+                        false, "ورود با نام کاربری و رمز", "[LOGIN_FAILED] سرور ورود را رد کرد (رمز/نام کاربری SQL را بررسی کنید)",
                         "نام کاربری و رمز SQL Server (نه ویندوز) را بررسی کنید؛ کاربر باید SQL Server Authentication باشد.",
                     )
                 }
@@ -587,13 +691,13 @@ class SqlServerDb(private val cfg: DbSettings) {
                     steps += DiagStep(true, "رمزنگاری اتصال (TLS)", "دست‌دادن با سرور موفق بود")
                     steps += DiagStep(true, "ورود با نام کاربری و رمز", "اعتبارنامه پذیرفته شد")
                     steps += DiagStep(
-                        false, "باز کردن دیتابیس «" + cfg.database.trim() + "»", "دیتابیس باز نشد",
+                        false, "باز کردن دیتابیس «" + cfg.database.trim() + "»", "[DATABASE_NOT_FOUND] دیتابیس باز نشد",
                         "نام دیتابیس یا دسترسی این کاربر به دیتابیس را بررسی کنید.",
                     )
                 }
                 isTimeout(e) -> {
                     steps += DiagStep(
-                        false, "مذاکره با سرور", "پاسخ سرور بیش از حد انتظار طول کشید (حتی بدون رمزنگاری)",
+                        false, "مذاکره با سرور", "[TCP_TIMEOUT] پاسخ سرور بیش از حد انتظار طول کشید (حتی بدون رمزنگاری)",
                         "اگر داخل شبکه اداره وصل می‌شوید ولی با اینترنت همراه نه، اپراتور ترافیک این پورت را فیلتر می‌کند — از VPN یا شبکه اداره استفاده کنید. اگر همه‌جا همین است، سرور یا فایروال میانی جلسات طولانی را می‌بندد.",
                     )
                 }
@@ -653,21 +757,113 @@ class SqlServerDb(private val cfg: DbSettings) {
      * (خطای رایج «وصل شد ولی دیتابیس غلط» همین‌جا کشف می‌شود)؛
      * خروجی: نسخه سرور.
      */
+    /** اولین کوئری اتصال (§۶ اسپک): دیتابیس فعال + نام سرور + نسخهٔ SQL */
+    private fun firstQuery(c: Connection): Triple<String, String, String> {
+        c.createStatement().use { st ->
+            st.executeQuery(
+                "SELECT DB_NAME() AS CurrentDatabase, @@SERVERNAME AS ServerName, @@VERSION AS SqlVersion"
+            ).use { rs ->
+                if (!rs.next()) throw AtiranDbException("SQL Server پاسخ قابل استفاده‌ای برنگرداند")
+                val active = rs.getString(1) ?: ""
+                if (active.trim().equals(cfg.database.trim(), ignoreCase = true).not()) {
+                    throw AtiranDbException(
+                        "اتصال برقرار شد اما دیتابیس «" + active + "» فعال است؛ دیتابیس انتخابی «" + cfg.database.trim() + "» است",
+                        "DATABASE_NOT_FOUND",
+                    )
+                }
+                return Triple(active, rs.getString(2) ?: "", (rs.getString(3) ?: "").substringBefore('\n').trim())
+            }
+        }
+    }
+
     suspend fun test(): String = withContext(Dispatchers.IO) {
-        withConn { c ->
-            c.createStatement().use { st ->
-                st.executeQuery("SELECT DB_NAME(), @@SERVERNAME, @@VERSION").use { rs ->
-                    if (!rs.next()) throw AtiranDbException("SQL Server پاسخ قابل استفاده‌ای برنگرداند")
-                    val active = rs.getString(1) ?: ""
-                    if (active.trim().equals(cfg.database.trim(), ignoreCase = true).not()) {
-                        throw AtiranDbException(
-                            "اتصال برقرار شد اما دیتابیس «" + active + "» فعال است؛ دیتابیس انتخابی «" + cfg.database.trim() + "» است"
-                        )
+        withConn { c -> firstQuery(c).third }
+    }
+
+    /** اطلاعات سرور بعد از ورود: (دیتابیس فعال، نام سرور، نسخهٔ SQL) */
+    suspend fun serverInfo(): Triple<String, String, String> = withContext(Dispatchers.IO) {
+        withConn { c -> firstQuery(c) }
+    }
+
+    /** اطلاعات شرکت (§۱۵ اسپک): تابع جدولی Atiran؛ فالبک فقط برای جلوگیری از کرش */
+    suspend fun companyInfo(): String? = withContext(Dispatchers.IO) {
+        try {
+            withConn { c ->
+                try {
+                    c.createStatement().use { st ->
+                        st.executeQuery("SELECT * FROM dbo.TBL_Func_CompanyName(1)").use { rs ->
+                            if (rs.next()) {
+                                val md = rs.metaData
+                                (1..md.columnCount).mapNotNull { i ->
+                                    rs.getString(i)?.trim()?.takeIf { it.length > 1 }
+                                }.firstOrNull()
+                            } else null
+                        }
                     }
-                    (rs.getString(3) ?: "").substringBefore('\n').trim()
+                } catch (_: Throwable) {
+                    c.createStatement().use { st ->
+                        st.executeQuery("SELECT TOP (1) * FROM dbo.CUSTOMERS").use { rs ->
+                            if (rs.next()) rs.getString(2) ?: rs.getString(1) else null
+                        }
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    // --------------------------------------------- کوئری عمومی فقط-خواندنی (§۲۳)
+    /** نتیجهٔ داینامیک کوئری: ستون‌ها + رکوردها */
+    data class QueryResult(val columns: List<String>, val rows: List<List<String?>>, val truncated: Boolean)
+
+    /**
+     * موتور کوئری عمومی فقط-خواندنی — تنها دروازهٔ دادهٔ هوش مصنوعی (§۲۰/§۲۳):
+     * اعتبارسنجی SQL → اتصال پایدار → اجرای async با تایم‌اوت → خروجی داینامیک.
+     * هیچ دستور نوشتن هرگز اجرا نمی‌شود.
+     */
+    suspend fun queryReadOnly(sql: String, maxRows: Int = 200, timeoutSec: Int = 20): QueryResult =
+        withContext(Dispatchers.IO) {
+            validateReadOnly(sql)?.let { throw AtiranDbException(it) }
+            withConn { c ->
+                c.createStatement().use { st ->
+                    st.queryTimeout = timeoutSec
+                    st.executeQuery(sql).use { rs -> drainCapped(rs, maxRows) }
                 }
             }
         }
+
+    private fun drainCapped(rs: java.sql.ResultSet, maxRows: Int): QueryResult {
+        val md = rs.metaData
+        val n = md.columnCount
+        val cols = (1..n).map { md.getColumnLabel(it) }
+        val out = ArrayList<List<String?>>()
+        var truncated = false
+        while (rs.next()) {
+            if (out.size >= maxRows) {
+                truncated = true
+                break
+            }
+            val row = ArrayList<String?>(n)
+            for (ci in 1..n) {
+                val v: Any? = try {
+                    rs.getObject(ci)
+                } catch (_: Throwable) {
+                    try {
+                        rs.getString(ci)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                }
+                row += when (v) {
+                    null -> null
+                    is ByteArray -> "(داده باینری " + v.size + " بایت)"
+                    else -> v.toString()
+                }
+            }
+            out += row
+        }
+        return QueryResult(cols, out, truncated)
     }
 
     // ------------------------------------------------------------ نمای کلی
@@ -772,7 +968,7 @@ class SqlServerDb(private val cfg: DbSettings) {
                 }
                 c.createStatement().use { st ->
                     st.executeQuery(
-                        "SELECT TOP ${limit.coerceIn(1, 50)} * FROM ${q(schema)}.${q(table)} ORDER BY ${q(orderCol)} DESC"
+                        "SELECT TOP ${limit.coerceIn(1, 60)} * FROM ${q(schema)}.${q(table)} ORDER BY ${q(orderCol)} DESC"
                     ).use { rs -> drain(rs) }
                 }
             }
@@ -788,7 +984,7 @@ class SqlServerDb(private val cfg: DbSettings) {
                 }
                 c.createStatement().use { st ->
                     st.executeQuery(
-                        "SELECT TOP ${limit.coerceIn(1, 50)} * FROM ${q(schema)}.${q(table)} ORDER BY ${q(dateCol)} DESC"
+                        "SELECT TOP ${limit.coerceIn(1, 60)} * FROM ${q(schema)}.${q(table)} ORDER BY ${q(dateCol)} DESC"
                     ).use { rs -> drain(rs) }
                 }
             }
@@ -880,7 +1076,15 @@ class SqlServerDb(private val cfg: DbSettings) {
                 ps.executeQuery().use { rs -> rs.next(); rs.getLong(1) }
             }
 
-            val pageSql = """
+            // §۷/§۱۰/§۱۱ اسپک: اگر کلید پایدار (SHMO/SHKA/…) موجود بود → OFFSET/FETCH استاندارد؛
+            // وگرنه ROW_NUMBER (سازگار با هر SQL Server)
+            val keyCol = cols.firstOrNull { it.name in KEY_ORDER_COLUMNS }?.name
+            val pageSql = if (keyCol != null) """
+                SELECT * FROM $tableRef$whereSql
+                ORDER BY ${q(keyCol)}
+                OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            """.trimIndent()
+            else """
                 SELECT * FROM (
                     SELECT *, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS [_rn]
                     FROM $tableRef$whereSql
@@ -888,14 +1092,23 @@ class SqlServerDb(private val cfg: DbSettings) {
                 WHERE [_paged].[_rn] > ? AND [_paged].[_rn] <= ?
                 ORDER BY [_paged].[_rn]
             """.trimIndent()
+            val p1: Long
+            val p2: Long
+            if (keyCol != null) {
+                p1 = offset
+                p2 = limit
+            } else {
+                p1 = offset
+                p2 = offset + limit
+            }
 
             val rows = c.prepareStatement(pageSql).use { ps ->
                 var i = 1
                 if (hasSearch) {
                     textCols.forEach { _ -> ps.setString(i++, "%$searchQuery%") }
                 }
-                ps.setLong(i++, offset)
-                ps.setLong(i, offset + limit)
+                ps.setLong(i++, p1)
+                ps.setLong(i, p2)
 
                 ps.executeQuery().use { rs ->
                     val md = rs.metaData

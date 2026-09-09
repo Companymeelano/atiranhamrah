@@ -88,7 +88,7 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: AtiranHamrahViewer-v4.9.4-debug-apk
+          name: AtiranHamrahViewer-v4.9.5-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -96,24 +96,22 @@ jobs:
         if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.9.4-debug
-          name: "M•REPORT v4.9.4 — هوش مصنوعی واقعی + پروب سرور + پستهٔ جدید"
+          tag_name: v4.9.5-debug
+          name: "M•REPORT v4.9.5 — پیاده‌سازی کامل مشخصات Direct SQL Server"
           body: |
-            **نسخه ۴.۹.۴ — هوش مصنوعی واقعی + پروب سرور + پستهٔ جدید** 🥜
+            **نسخهٔ ۴.۹.۵ — پیاده‌سازی کامل مشخصات Direct SQL Server Integration** 🥜
 
-            **هوش مصنوعی آنلاین (جدید):**
-            - پسته حالا با مدل‌های زبانی واقعی گفتگو می‌کند: Groq → OpenAI → Cloudflare (به‌ترتیب تلاش؛ هر کدام جواب داد همان)
-            - کلیدهای داخلی رمز‌شده در برنامه + امکان وارد کردن کلید اختصاصی خودتان از «تنظیمات پسته» بدون نیاز به نسخهٔ جدید
-            - بدون اینترنت یا در صورت خطا → مغز محلی پسته خودکار جواب می‌دهد؛ گفتگو هرگز نمی‌میرد
-            - کلیدها در ریپوی عمومی دیده نمی‌وند (رمزشده و تکه‌تکه)
-
-            **اتصال دیتابیس:**
-            - پروب واقعی سرور از CI (workflow جدید Server Probe) — علت دقیق شکست اتصال از اینترنت واقعی تشخیص داده می‌شود
-            - usesCleartextTraffic فعال — حذف هر محدودیت احتمالی اتصال بدون TLS
-
-            **پستهٔ جدید:** رندر chibi بامزه‌تر (چشم‌های غول‌پیکر، لبخند باز با زبان) در آیکون، لوگو، ورود و گفتگوی هوش مصنوعی — با اشک واقعی در گریه، نقطه‌های فکر و برق چشمک
-
-            **فیلم ورود:** پرتوهای نور واقعی، پسته‌های شناور در عمق، فرود نرم با اسکواش-استرچ، و در پایان پسته منتظر واکنش شما می‌ماند — ورود فقط با لمس شما
+            **سازگاری بند‌به‌بند با اسپک M•R:**
+            - §۲ پورت مشخص → اتصال مستقیم Host+Port؛ Named Instance فقط وقتی Browser لازم است
+            - §۴ درایور مایکروسافت = موتور اصلی؛ jTDS فقط fallback (با حافظهٔ حالت جواب‌داده)
+            - §۵ عیب‌یابی ۱۰-مرحله‌ای: DNS → TCP → TDS → ورود → DB_NAME → @@SERVERNAME → @@VERSION → کشف اسکیما → کشف ستون‌ها → اطلاعات شرکت
+            - §۶ اولین کوئری: CurrentDatabase/ServerName/SqlVersion + تطبیق دیتابیس انتخابی
+            - §۷/§۱۰/§۱۱ صفحه‌بندی OFFSET/FETCH با کلید پایدار SHMO/SHKA (fallback: ROW_NUMBER)
+            - §۱۵ اطلاعات شرکت از dbo.TBL_Func_CompanyName(1) با فالبک بی‌کرش
+            - §۱۷ بچ اول داشبورد و جداول = ۶۰ رکورد + Lazy Load بعدی
+            - §۲۰/§۲۳ queryReadOnly: موتور کوئری عمومی فقط-خواندنی — فقط SELECT/WITH؛ INSERT/UPDATE/DELETE/EXEC/… هرگز اجرا نمی‌شود
+            - §۲۱ هوش مصنوعی شِمای واقعی دیتابیس را می‌شناسد (ستون‌های واقعی از INFORMATION_SCHEMA) — نام ستون حدس زده نمی‌شود
+            - §۲۴ تاکسونومی خطاها در همهٔ پیام‌ها: LOGIN_FAILED / TCP_REFUSED / TLS_ERROR / DATABASE_NOT_FOUND / …
 
             **نصب:** فایل `app-debug.apk` را دانلود و روی گوشی اندروید ۸ به بالا نصب کنید.
 
