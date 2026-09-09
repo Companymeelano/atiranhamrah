@@ -17,6 +17,7 @@ package ir.atiran.hamrah.viewer.ui.components
  */
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -112,9 +113,8 @@ fun PistachioIntro(onDone: () -> Unit) {
         SoundFx.soft()
         delay(2900)
         SoundFx.success()
+        // فیلم تمام می‌شود اما ورود فقط با واکنش کاربر — پسته منتظر می‌ماند
         t.animateTo(1f, tween(9200, easing = LinearEasing))
-        delay(500)
-        onDone()
     }
 
     Box(
@@ -194,6 +194,32 @@ fun PistachioIntro(onDone: () -> Unit) {
                 topLeft = Offset(w * 0.05f, deskY + (h - deskY) * 0.10f),
                 size = Size(w * 0.9f, (h - deskY) * 0.8f),
             )
+
+            // ---------- پرتوهای نور مطالعه — از بالای چپ
+            for (i in 0 until 2) {
+                rotate(if (i == 0) 24f else 38f, pivot = Offset(w * 0.10f, -h * 0.05f)) {
+                    val rw = w * (if (i == 0) 0.10f else 0.06f)
+                    val rh = h * 0.95f
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            listOf(Color(0xFFFFE3B0).copy(alpha = (0.10f - i * 0.03f) * fadeIn), Color.Transparent),
+                        ),
+                        topLeft = Offset(w * 0.10f + i * w * 0.11f, -h * 0.05f),
+                        size = Size(rw, rh),
+                    )
+                }
+            }
+
+            // ---------- پسته‌های شناور واقعی در عمق
+            for (i in 0 until 3) {
+                val depth = 0.45f + i * 0.28f
+                val drift = sin(tv * (0.8f + i * 0.3f) * 2f * PI.toFloat() + i * 2f)
+                val fx = w * (0.06f + i * 0.41f) + drift * w * 0.022f
+                val fy = h * (0.16f + i * 0.13f) + sin(tv * (0.6f + i * 0.2f) * 2f * PI.toFloat() + i) * h * 0.014f
+                rotate(14f + i * 21f, pivot = Offset(fx, fy)) {
+                    drawMiniPistachio(fx, fy, w * 0.028f * depth, angle = 0f, alpha = (0.30f + i * 0.10f) * fadeIn)
+                }
+            }
 
             // ---------- ذرات غبار معلق در نور — واقعی
             for (i in 0 until 11) {
@@ -361,8 +387,10 @@ fun PistachioIntro(onDone: () -> Unit) {
                 modifier = Modifier
                     .align(Alignment.Center)
                     .graphicsLayer {
-                        scaleX = landScale * breathe
-                        scaleY = landScale * breathe
+                        // اسکواش-استرچ فرود — مثل جسم واقعی نرم
+                        val squash = if (heroP < 1f) sin(heroP * PI.toFloat()) * 0.07f else 0f
+                        scaleX = landScale * breathe * (1f + squash)
+                        scaleY = landScale * breathe * (1f - squash)
                         alpha = heroP
                         translationY = (1f - heroP) * 90f
                     }
@@ -418,12 +446,22 @@ fun PistachioIntro(onDone: () -> Unit) {
 
         // ================== دکمهٔ ورود ==================
         if (tv >= 0.80f) {
+            val pulse by rememberInfiniteTransition(label = "btnPulse").animateFloat(
+                initialValue = 1f,
+                targetValue = 1.055f,
+                animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                label = "btnPulseF",
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 92.dp)
+                    .graphicsLayer {
+                        scaleX = pulse
+                        scaleY = pulse
+                    }
                     .clip(RoundedCornerShape(50))
                     .background(
                         Brush.horizontalGradient(

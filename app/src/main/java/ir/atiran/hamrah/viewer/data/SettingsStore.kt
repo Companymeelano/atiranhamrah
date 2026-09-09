@@ -119,6 +119,8 @@ class SettingsStore(private val context: Context) {
             it[Keys.aiMode] = s.mode
             it[Keys.aiDomains] = s.domains.joinToString(",")
             it[Keys.aiVisits] = s.visits
+            it[Keys.aiOnline] = s.online
+            it[Keys.aiKey] = s.apiKey
         }
     }
 

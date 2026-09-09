@@ -52,6 +52,7 @@ import androidx.compose.ui.window.DialogProperties
 import ir.atiran.hamrah.viewer.ui.AppViewModel
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.AiBrain
+import ir.atiran.hamrah.viewer.utils.LlmClient
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -67,6 +68,8 @@ private data class AiMsg(val me: Boolean, val text: String)
 fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
+    val appCtx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var input by remember { mutableStateOf("") }
     var awaitingName by remember { mutableStateOf(vm.ai.userName.isBlank()) }
     val listState = rememberLazyListState()
@@ -84,22 +87,46 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
         if (msgs.isNotEmpty()) listState.animateScrollToItem(msgs.lastIndex)
     }
 
+    var thinking by remember { mutableStateOf(false) }
+
     fun send(raw: String) {
         val text = raw.trim()
         if (text.isEmpty()) return
         SoundFx.soft()
-        val ctx = AiBrain.Ctx(vm.ai.userName, vm.ai.mode, vm.ai.domains, vm.ai.visits)
-        val answer: String
+        val brainCtx = AiBrain.Ctx(vm.ai.userName, vm.ai.mode, vm.ai.domains, vm.ai.visits)
+        msgs = msgs + AiMsg(true, text)
         if (awaitingName && AiBrain.looksLikeName(text)) {
             vm.updateAi { it.copy(userName = text) }
             awaitingName = false
-            answer = AiBrain.nameThanks(text)
-        } else {
-            val r = AiBrain.reply(text, ctx)
-            if (vm.ai.userName.isBlank() && AiBrain.askingName(r)) awaitingName = true
-            answer = r
+            msgs = msgs + AiMsg(false, AiBrain.nameThanks(text))
+            return
         }
-        msgs = msgs + AiMsg(true, text) + AiMsg(false, answer)
+        // اول هوش مصنوعی آنلاین (اگر فعال و در دسترس)؛ اگر نشد مغز محلی پسته
+        thinking = true
+        msgs = msgs + AiMsg(false, "🥜 ...")
+        scope.launch {
+            val online = vm.ai.online && LlmClient.available(vm.ai.apiKey.takeIf { it.isNotBlank() })
+            val history = msgs.dropLast(2).takeLast(6).map {
+                (if (it.me) "کاربر:" else "پسته:") + " " + it.text
+            }
+            val onlineReply = if (online) {
+                try {
+                    LlmClient.chat(
+                        context = appCtx,
+                        userMessage = text,
+                        history = history,
+                        system = LlmClient.systemPrompt(vm.ai.userName, vm.ai.mode),
+                        customKey = vm.ai.apiKey.takeIf { it.isNotBlank() },
+                    )
+                } catch (_: Throwable) {
+                    null
+                }
+            } else null
+            val finalAnswer = onlineReply ?: AiBrain.reply(text, brainCtx)
+            if (vm.ai.userName.isBlank() && AiBrain.askingName(finalAnswer)) awaitingName = true
+            thinking = false
+            msgs = msgs.dropLast(1) + AiMsg(false, finalAnswer)
+        }
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -115,7 +142,7 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
-                Pistachio(size = 38.dp, bobbing = false)
+                PistachioLive(size = 38.dp, bobbing = false, thinking = thinking)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text("پسته", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
@@ -146,7 +173,7 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                     ) {
                         Row(verticalAlignment = Alignment.Bottom) {
                             if (!m.me) {
-                                Pistachio(size = 26.dp, bobbing = false)
+                                PistachioLive(size = 26.dp, bobbing = false)
                                 Spacer(Modifier.width(6.dp))
                             }
                             Box(
@@ -270,7 +297,7 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
         ) {
             // سربرگ
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Pistachio(size = 34.dp, bobbing = false)
+                PistachioLive(size = 34.dp, bobbing = false)
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text("دستیار هوشمند «پسته»", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
@@ -290,6 +317,39 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                     colors = SwitchDefaults.colors(checkedTrackColor = scheme.primary),
                 )
             }
+
+            // هوش مصنوعی آنلاین — پاسخ‌های واقعی مدل زبانی
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("پاسخ‌های آنلاین 🧠", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(
+                        "گفتگوی واقعی با هوش مصنوعی — بدون اینترنت، مغز محلی پسته جواب می‌دهد",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = vm.ai.online,
+                    onCheckedChange = { vm.updateAi { a -> a.copy(online = it) }; SoundFx.soft() },
+                    colors = SwitchDefaults.colors(checkedTrackColor = scheme.primary),
+                )
+            }
+
+            // کلید API اختصاصی (اختیاری) — بر کلیدهای داخلی اولویت دارد
+            var apiKeyInput by remember(vm.ai.apiKey) { mutableStateOf(vm.ai.apiKey) }
+            OutlinedTextField(
+                value = apiKeyInput,
+                onValueChange = { apiKeyInput = it },
+                placeholder = { Text("کلید API اختصاصی (اختیاری — Groq یا OpenAI)") },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "اگر کلید خودتان را وارد کنید، پسته با آن جواب می‌دهد؛ خالی بگذارید تا کلید داخلی برنامه استفاده شود.",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
 
             // اسم کاربر — حافظه پسته (ذخیرهٔ فوری)
             Text("اسم من چی باشه؟", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
@@ -424,6 +484,9 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                         if (name.trim() != vm.ai.userName && name.isNotBlank()) {
                             vm.updateAi { it.copy(userName = name.trim()) }
                         }
+                        if (apiKeyInput.trim() != vm.ai.apiKey) {
+                            vm.updateAi { it.copy(apiKey = apiKeyInput.trim()) }
+                        }
                         saved = true
                         SoundFx.success()
                         scope.launch {
@@ -458,7 +521,7 @@ fun AiGreetingOverlay(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Pistachio(size = 56.dp)
+            PistachioLive(size = 56.dp)
             Column(
                 modifier = Modifier
                     .widthIn(max = 300.dp)
