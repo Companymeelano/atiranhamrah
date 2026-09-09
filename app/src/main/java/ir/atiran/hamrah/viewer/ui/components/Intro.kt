@@ -148,7 +148,7 @@ fun PistachioIntro(onDone: () -> Unit) {
                 if (act == 0) {
                     for (i in 0 until 3) {
                         val phase = (tA + i * 0.33f) % 1f
-                        val zzY = (groundY - chh * 0.34f - phase * chh * 0.10f).toPx()
+                        val zzY = (groundY - chh * 0.34f - chh * phase * 0.10f).toPx()
                         drawCircle(
                             Color(0xFF6E8F2A).copy(alpha = (1f - phase) * 0.5f),
                             radius = px * (1.1f + i * 0.5f),
@@ -203,7 +203,7 @@ fun PistachioIntro(onDone: () -> Unit) {
                     if (shellAlpha > 0.02f) {
                         // نیمهٔ چپ — پرواز به چپ با چرخش
                         val lx = w * 0.44f - ease * w * 0.42f
-                        val ly = (groundY - chh * 0.30f - ease * chh * 0.16f).toPx()
+                        val ly = (groundY - chh * 0.30f - chh * ease * 0.16f).toPx()
                         rotate(-ease * 40f, pivot = Offset(lx, ly)) {
                             val sh = Path().apply {
                                 moveTo(lx, ly - px * 16f)
@@ -216,7 +216,7 @@ fun PistachioIntro(onDone: () -> Unit) {
                         }
                         // نیمهٔ راست — پرواز به راست
                         val rx = w * 0.56f + ease * w * 0.42f
-                        val ry = (groundY - chh * 0.30f - ease * chh * 0.16f).toPx()
+                        val ry = (groundY - chh * 0.30f - chh * ease * 0.16f).toPx()
                         rotate(ease * 40f, pivot = Offset(rx, ry)) {
                             val sh = Path().apply {
                                 moveTo(rx, ry - px * 16f)
@@ -262,7 +262,7 @@ fun PistachioIntro(onDone: () -> Unit) {
 
             // ---------- خودِ پسته — قهرمان فیلم
             val tA2 = if (act == 1) tA else 0f
-            val jump = if (act == 1) sin((tA2 * 1.7f).coerceAtMost(1f) * PI.toFloat()) * chh * 0.10f else 0.dp
+            val jump = if (act == 1) chh * sin((tA2 * 1.7f).coerceAtMost(1f) * PI.toFloat()) * 0.10f else 0.dp
             val shakeDp = if (act == 2) (sin(tA * 34f) * (1f - tA) * 10f).dp else 0.dp
             val sizeP = cw * 0.46f
             Pistachio(
