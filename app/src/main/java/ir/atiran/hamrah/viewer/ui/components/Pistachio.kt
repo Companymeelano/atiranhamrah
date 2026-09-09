@@ -39,14 +39,15 @@ import kotlin.math.sin
 enum class PistachioMood { Happy, Wink, Sulk, Cry, Think }
 
 /**
- * شخصیت «پسته» 🥜 — دستیار زندهٔ M•REPORT
+ * شخصیت «پسته» 🥜 — دستیار زندهٔ M•REPORT (نسخهٔ ۲ — بازسازی از تصویر مرجع)
  *
- * بازسازی دقیق طرح اصلی (همان که در تصویر مرجع و آیکون لانچر است):
- * پوستهٔ بادامی با گرادیان بژ واقعی، شکاف پوسته، برگچهٔ سر، مغز سبز
- * خندان با چشمک تک‌چشمیِ امضا، لپ‌های گیج، دهان خنده با زبان و پاپیون
- * هم‌رنگ تم. زنده است: بالا-پایین می‌پرد، هر ازگاهی چشمک می‌زند،
- * به لمس واکنش نشان می‌دهد و پنج حالت چهره دارد — مثل یک آدم واقعی:
- * خوشحال، چشمک (زبان بیرون!)، بغضِ لجباز، گریهٔ همدردی و فکر کردن.
+ * مثل یک آدم واقعی زنده است: پلک می‌زند، نفس می‌کشد، دست تکان می‌دهد،
+ * می‌پرد، به لمس واکنش نشان می‌دهد و پنج حالت چهره دارد — خوشحال،
+ * چشمکِ شیطنت‌آمیز، بغضِ لجباز، گریهٔ همدردی و فکر کردن.
+ *
+ * ساختار (مطابق تصویر مرجع): نیمه‌های تیرهٔ پوستهٔ پسته که باز شده‌اند،
+ * بدن/مغز کرمی گرد، برگچهٔ سبز روی سر، دو چشم غول‌پیکر براق مشکی،
+ * لبخند پهن با زبان، دو دست سبز تکان‌دهنده و دو پای سبز کوچک.
  */
 @Composable
 fun Pistachio(
@@ -54,8 +55,12 @@ fun Pistachio(
     modifier: Modifier = Modifier,
     bobbing: Boolean = true,
     mood: PistachioMood = PistachioMood.Happy,
-    /** رنگ پاپیون — هماهنگ با تم انتخابی کاربر */
+    /** رنگ دست‌ها — هماهنگ با تم انتخابی کاربر */
     themeTint: Color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+    /** چشم‌های بسته — برای صحنهٔ خواب در انیمیشن ورود */
+    eyesClosed: Boolean = false,
+    /** تکان‌دادن دست‌ها — سلام و احوال‌پرسی */
+    armWave: Boolean = true,
 ) {
     val tr = rememberInfiniteTransition(label = "pistachio")
     val t by tr.animateFloat(
@@ -70,13 +75,13 @@ fun Pistachio(
         animationSpec = infiniteRepeatable(tween(3400, easing = LinearEasing)),
         label = "pistBlink",
     )
-    val blink = if (blinkPhase < 0.07f) 0.12f else 1f
+    val blink = if (blinkPhase < 0.07f) 0.10f else 1f
 
     // چشمک خودبه‌خودی — پسته همیشه زنده است
     var wink by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = when {
-            wink -> 1.12f
+            wink -> 1.10f
             mood == PistachioMood.Sulk -> 0.97f
             else -> 1f
         },
@@ -84,17 +89,21 @@ fun Pistachio(
         label = "pistScale",
     )
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(4600L)
-            wink = true
-            delay(430L)
-            wink = false
+    if (!eyesClosed) {
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(4600L)
+                wink = true
+                delay(430L)
+                wink = false
+            }
         }
     }
 
-    val bobPx = if (bobbing) 0.045f else 0f
-    val showWink = wink || mood == PistachioMood.Wink
+    val bobPx = if (bobbing) 0.042f else 0f
+    val showWink = (wink || mood == PistachioMood.Wink) && !eyesClosed
+    // موج دست‌ها — تکان‌دادن شیطنت‌آمیز
+    val waveA = if (armWave) sin(t * 2f * PI.toFloat()) * 16f else 6f
 
     androidx.compose.foundation.layout.Box(
         modifier
@@ -121,208 +130,260 @@ fun Pistachio(
             fun x(v: Float) = v * u
             fun y(v: Float) = v * u
 
-            // ---------- پوستهٔ بادامی — گرادیان بژ واقعی (مثل تصویر مرجع)
-            val shell = Path().apply {
-                moveTo(x(50f), y(5f))
-                cubicTo(x(79f), y(15f), x(89f), y(48f), x(74f), y(75f))
-                cubicTo(x(64f), y(91f), x(36f), y(91f), x(26f), y(75f))
-                cubicTo(x(11f), y(48f), x(21f), y(15f), x(50f), y(5f))
+            // ---------- نیمه‌های پوستهٔ تیره — باز شده به دو طرف
+            val shellL = Path().apply {
+                moveTo(x(50f), y(12f))
+                cubicTo(x(36f), y(14f), x(24f), y(24f), x(20f), y(40f))
+                cubicTo(x(17f), y(52f), x(22f), y(66f), x(34f), y(74f))
+                cubicTo(x(26f), y(60f), x(27f), y(44f), x(36f), y(32f))
+                cubicTo(x(42f), y(24f), x(48f), y(18f), x(56f), y(16f))
                 close()
             }
             drawPath(
-                shell,
-                brush = Brush.verticalGradient(
-                    listOf(Color(0xFFE6CB98), Color(0xFFD2AE79), Color(0xFFB08A55)),
-                    startY = y(5f), endY = y(91f),
+                shellL,
+                brush = Brush.linearGradient(
+                    listOf(Color(0xFF7B3E1E), Color(0xFF4A1F0D)),
+                    start = Offset(x(18f), y(12f)),
+                    end = Offset(x(52f), y(74f)),
                 ),
             )
+            drawPath(shellL, color = Color(0xFF33150A), style = Stroke(1.0f * u))
+
+            val shellR = Path().apply {
+                moveTo(x(50f), y(12f))
+                cubicTo(x(64f), y(14f), x(76f), y(24f), x(80f), y(40f))
+                cubicTo(x(83f), y(52f), x(78f), y(66f), x(66f), y(74f))
+                cubicTo(x(74f), y(60f), x(73f), y(44f), x(64f), y(32f))
+                cubicTo(x(58f), y(24f), x(52f), y(18f), x(44f), y(16f))
+                close()
+            }
             drawPath(
-                shell,
-                brush = Brush.verticalGradient(
-                    listOf(Color(0xFF9A7A4C), Color(0xFF8A6B42)),
-                    startY = y(5f), endY = y(91f),
+                shellR,
+                brush = Brush.linearGradient(
+                    listOf(Color(0xFF6B3418), Color(0xFF3F1B0C)),
+                    start = Offset(x(82f), y(12f)),
+                    end = Offset(x(48f), y(74f)),
                 ),
-                style = Stroke(1.7f * u),
             )
+            drawPath(shellR, color = Color(0xFF33150A), style = Stroke(1.0f * u))
 
-            // برق نور روی پوسته — عمق با نور
-            drawOval(
-                brush = Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.20f), Color.Transparent),
+            // ---------- برگچهٔ سبز روی سر
+            val leaf = Path().apply {
+                moveTo(x(52f), y(32f))
+                cubicTo(x(48f), y(26f), x(47f), y(18f), x(51f), y(10f))
+                cubicTo(x(55f), y(4f), x(61f), y(3f), x(64f), y(6f))
+                cubicTo(x(60f), y(8f), x(57f), y(13f), x(57f), y(20f))
+                cubicTo(x(57f), y(25f), x(56f), y(29f), x(54f), y(33f))
+                close()
+            }
+            drawPath(
+                leaf,
+                brush = Brush.linearGradient(
+                    listOf(Color(0xFFA9C43C), Color(0xFF6E8F2A)),
+                    start = Offset(x(58f), y(8f)),
+                    end = Offset(x(50f), y(34f)),
                 ),
-                topLeft = Offset(x(30f), y(16f)),
-                size = Size(x(22f), x(34f)),
             )
-
-            // ---------- شکاف پوسته — خط باریک بالا
+            drawPath(leaf, color = Color(0xFF546E1E), style = Stroke(0.8f * u))
             drawPath(
                 Path().apply {
-                    moveTo(x(50f), y(6f))
-                    quadraticBezierTo(x(46f), y(16f), x(50.5f), y(26f))
+                    moveTo(x(53f), y(31f))
+                    cubicTo(x(53f), y(24f), x(54f), y(17f), x(57f), y(11f))
                 },
-                color = Color(0xFF8A6B42),
-                style = Stroke(2.1f * u, cap = StrokeCap.Round),
+                color = Color(0xFF546E1E),
+                style = Stroke(0.8f * u, cap = StrokeCap.Round),
             )
 
-            // ---------- برگچهٔ سر پسته
-            drawPath(
-                Path().apply {
-                    moveTo(x(50f), y(8f))
-                    quadraticBezierTo(x(57f), y(0.5f), x(66f), y(4.5f))
-                    quadraticBezierTo(x(58.5f), y(11.5f), x(50f), y(8f))
-                    close()
-                },
-                color = Color(0xFF6F9A4E),
-            )
-            drawPath(
-                Path().apply { moveTo(x(50f), y(9f)); lineTo(x(48f), y(4.5f)) },
-                color = Color(0xFF5D7A40),
-                style = Stroke(1.5f * u, cap = StrokeCap.Round),
-            )
+            // ---------- پاهای سبز کوچک
+            drawLine(Color(0xFF5C7820), Offset(x(43f), y(91f)), Offset(x(43f), y(96f)), strokeWidth = 7f * u, cap = StrokeCap.Round)
+            drawLine(Color(0xFF5C7820), Offset(x(57f), y(91f)), Offset(x(57f), y(96f)), strokeWidth = 7f * u, cap = StrokeCap.Round)
 
-            // ---------- مغز سبز — صحنهٔ صورت با گرادیان شعاعی
+            // ---------- دست‌های سبز — تکان‌دهنده!
+            val armColor = listOf(Color(0xFF8FA834), Color(0xFF66831F))
+            rotate(waveA, pivot = Offset(x(27f), y(64f))) {
+                drawLine(
+                    brush = Brush.linearGradient(armColor, start = Offset(x(27f), y(64f)), end = Offset(x(13f), y(45f))),
+                    start = Offset(x(27f), y(64f)),
+                    end = Offset(x(13f), y(45f)),
+                    strokeWidth = 7f * u,
+                    cap = StrokeCap.Round,
+                )
+            }
+            rotate(-waveA, pivot = Offset(x(73f), y(64f))) {
+                drawLine(
+                    brush = Brush.linearGradient(armColor, start = Offset(x(73f), y(64f)), end = Offset(x(87f), y(45f))),
+                    start = Offset(x(73f), y(64f)),
+                    end = Offset(x(87f), y(45f)),
+                    strokeWidth = 7f * u,
+                    cap = StrokeCap.Round,
+                )
+            }
+
+            // ---------- بدن کرمی — مغز پسته
             drawOval(
-                brush = Brush.radialGradient(
-                    listOf(Color(0xFFBBD68F), Color(0xFF8FB260), Color(0xFF7A9A50)),
-                    center = Offset(x(50f), y(33f)),
-                    radius = x(27f),
+                brush = Brush.verticalGradient(
+                    listOf(Color(0xFFFBF2DA), Color(0xFFEFDCB6), Color(0xFFD9BE93)),
+                    startY = y(27f), endY = y(93f),
                 ),
-                topLeft = Offset(x(25f), y(20f)),
-                size = Size(x(50f), x(38f)),
+                topLeft = Offset(x(19f), y(27f)),
+                size = Size(x(62f), x(66f)),
+            )
+            drawOval(
+                color = Color(0xFFC9AC80),
+                topLeft = Offset(x(19f), y(27f)),
+                size = Size(x(62f), x(66f)),
+                style = Stroke(1.2f * u),
+            )
+            // نور نقطه‌ای روی بدن — عمق با نور
+            drawOval(
+                brush = Brush.verticalGradient(
+                    listOf(Color.White.copy(alpha = 0.50f), Color.Transparent),
+                ),
+                topLeft = Offset(x(26f), y(27f)),
+                size = Size(x(24f), x(18f)),
             )
 
-            // ---------- لپ‌های گیج
-            drawCircle(Color(0xFFE2906B).copy(alpha = 0.55f), radius = x(4.2f), center = Offset(x(34.6f), y(41f)))
-            drawCircle(Color(0xFFE2906B).copy(alpha = 0.55f), radius = x(4.2f), center = Offset(x(65.4f), y(41f)))
+            // ---------- لپ‌های نرم
+            drawOval(Color(0xFFF0C9A4).copy(alpha = 0.55f), topLeft = Offset(x(22.4f), y(63.2f)), size = Size(x(9.2f), x(5.6f)))
+            drawOval(Color(0xFFF0C9A4).copy(alpha = 0.55f), topLeft = Offset(x(68.4f), y(63.2f)), size = Size(x(9.2f), x(5.6f)))
 
-            // ---------- چشم‌ها — چپ باز، راست چشمکِ امضا
-            fun eyeOpen(cx: Float) {
+            // ---------- چشم‌ها — غول‌پیکر و براق
+            fun eyeOpen(cx: Float, cy: Float, rx: Float, ry: Float) {
                 drawOval(
-                    color = Color(0xFFFCF8EE),
-                    topLeft = Offset(x(cx - 4.4f), y(35f - 4.4f * blink)),
-                    size = Size(x(8.8f), x(8.8f) * blink.coerceAtLeast(0.12f)),
+                    color = Color(0xFF241C10),
+                    topLeft = Offset(x(cx - rx), y(cy - ry * blink)),
+                    size = Size(x(rx * 2f), x(ry * 2f * blink.coerceAtLeast(0.10f))),
                 )
                 if (blink > 0.5f) {
-                    // مردمک — در حالت فکر به بالا-راست نگاه می‌کند
-                    val lookUp = if (mood == PistachioMood.Think) 1.6f else 0f
-                    val lookSide = if (mood == PistachioMood.Think) 1.3f else 0f
+                    // مردمک‌ها در حالت فکر به بالا-راست نگاه می‌کنند
+                    val lookUp = if (mood == PistachioMood.Think) 1.8f else 0f
+                    val lookSide = if (mood == PistachioMood.Think) 1.6f else 0f
                     drawCircle(
-                        color = Color(0xFF3A2E1B),
-                        radius = x(2.2f),
-                        center = Offset(x(cx + lookSide), y(35f - lookUp)),
+                        Color.White.copy(alpha = 0.95f),
+                        radius = x(rx * 0.34f),
+                        center = Offset(x(cx - rx * 0.30f + lookSide), y(cy - ry * 0.32f - lookUp)),
                     )
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.85f),
-                        radius = x(0.8f),
-                        center = Offset(x(cx + 0.5f + lookSide), y(34f - lookUp)),
+                        Color.White.copy(alpha = 0.65f),
+                        radius = x(rx * 0.13f),
+                        center = Offset(x(cx + rx * 0.26f + lookSide), y(cy + ry * 0.24f - lookUp)),
                     )
                 }
             }
-            fun eyeWinkArc(cx1: Float, cx2: Float) {
+            fun eyeClosedArc(cx1: Float, cx2: Float, cy: Float, flip: Boolean = false) {
                 drawPath(
                     Path().apply {
-                        moveTo(x(cx1), y(35.4f))
-                        quadraticBezierTo(x((cx1 + cx2) / 2f), y(32f), x(cx2), y(35.4f))
+                        moveTo(x(cx1), y(cy))
+                        quadraticBezierTo(
+                            x((cx1 + cx2) / 2f), y(if (flip) cy - 3.6f else cy + 3.6f),
+                            x(cx2), y(cy),
+                        )
                     },
-                    color = Color(0xFF3A2E1B),
-                    style = Stroke(1.9f * u, cap = StrokeCap.Round),
+                    color = Color(0xFF241C10),
+                    style = Stroke(2.0f * u, cap = StrokeCap.Round),
                 )
             }
             when {
-                showWink -> { eyeOpen(41f); eyeWinkArc(55f, 63f) }
-                mood == PistachioMood.Sulk -> { eyeWinkArc(37f, 45f); eyeWinkArc(55f, 63f) }
-                else -> { eyeOpen(41f); eyeOpen(59f) }
+                eyesClosed -> { eyeClosedArc(30f, 44f, 54f); eyeClosedArc(56f, 70f, 55f) }
+                showWink -> { eyeOpen(37f, 54f, 8.8f, 10f); eyeClosedArc(56f, 70f, 55f, flip = true) }
+                mood == PistachioMood.Sulk -> { eyeClosedArc(30f, 44f, 54f, flip = true); eyeClosedArc(56f, 70f, 55f, flip = true) }
+                else -> { eyeOpen(37f, 54f, 8.8f, 10f); eyeOpen(63f, 55f, 9.8f, 11f) }
             }
-            // حالت گریه: اشک‌ها زیر چشم‌ها
-            if (mood == PistachioMood.Cry) {
-                listOf(38.5f to 43.5f, 61.5f to 43.5f).forEach { (tx, ty) ->
+            // گریه: قطره‌های اشک زیر چشم‌ها
+            if (mood == PistachioMood.Cry && !eyesClosed) {
+                val tearY = 64f + (t * 8f) % 1f * 6f
+                listOf(37f to tearY, 63f to tearY).forEach { (tx, ty) ->
                     drawOval(
                         brush = Brush.verticalGradient(
-                            listOf(Color(0xFF9CD5F2).copy(alpha = 0.95f), Color(0xFF5FB0DC).copy(alpha = 0.65f)),
+                            listOf(Color(0xFF9CD5F2).copy(alpha = 0.95f), Color(0xFF5FB0DC).copy(alpha = 0.60f)),
                         ),
-                        topLeft = Offset(x(tx - 1.6f), y(ty)),
-                        size = Size(x(3.2f), x(5.2f)),
+                        topLeft = Offset(x(tx - 1.7f), y(ty)),
+                        size = Size(x(3.4f), x(5.4f)),
                     )
                 }
             }
 
-            // ---------- ابروها — راستی بالا رفته از توّقی!
-            val browLift = when {
-                showWink -> 3.2f
-                mood == PistachioMood.Sulk -> -1.8f
-                else -> 0f
+            // ---------- ابروها — فقط در بغض و فکر
+            if (mood == PistachioMood.Sulk || mood == PistachioMood.Think) {
+                val lift = if (mood == PistachioMood.Think) -1.5f else 0f
+                drawPath(
+                    Path().apply {
+                        moveTo(x(31f), y(42f + lift))
+                        quadraticBezierTo(x(37f), y(40f + lift), x(43f), y(42.5f + lift))
+                    },
+                    color = Color(0xFF241C10),
+                    style = Stroke(1.6f * u, cap = StrokeCap.Round),
+                )
+                drawPath(
+                    Path().apply {
+                        moveTo(x(57f), y(42.5f + lift))
+                        quadraticBezierTo(x(63f), y(40f + lift), x(69f), y(42f + lift))
+                    },
+                    color = Color(0xFF241C10),
+                    style = Stroke(1.6f * u, cap = StrokeCap.Round),
+                )
             }
-            val tilt = if (mood == PistachioMood.Sulk) 1.5f else 0f
-            drawPath(
-                Path().apply {
-                    moveTo(x(37.2f), y(28.5f - browLift + tilt))
-                    quadraticBezierTo(x(41f), y(25.6f - browLift + tilt), x(44.8f), y(28.5f - browLift))
-                },
-                color = Color(0xFF3A2E1B),
-                style = Stroke(1.7f * u, cap = StrokeCap.Round),
-            )
-            drawPath(
-                Path().apply {
-                    moveTo(x(55.2f), y(25.3f - browLift))
-                    quadraticBezierTo(x(59f), y(22.4f - browLift + tilt), x(62.8f), y(25.3f - browLift + tilt))
-                },
-                color = Color(0xFF3A2E1B),
-                style = Stroke(1.7f * u, cap = StrokeCap.Round),
-            )
 
             // ---------- دهان — بر اساس حالت
             when {
+                eyesClosed -> {
+                    // دهان کوچک خواب — نفس می‌کشد
+                    drawOval(
+                        color = Color(0xFF241C10).copy(alpha = 0.85f),
+                        topLeft = Offset(x(47.5f), y(70f)),
+                        size = Size(x(5f), x(6.4f * (0.6f + 0.4f * sin(t * 2f * PI.toFloat()).coerceAtLeast(0f)))),
+                    )
+                }
                 showWink || mood == PistachioMood.Happy -> {
-                    // خندهٔ باز + زبان
+                    // لبخند پهن + زبان
                     drawPath(
                         Path().apply {
-                            moveTo(x(43.5f), y(41.5f))
-                            quadraticBezierTo(x(50f), y(49.5f), x(56.5f), y(41.5f))
+                            moveTo(x(39f), y(69f))
+                            quadraticBezierTo(x(50f), y(79f), x(61f), y(69f))
+                            quadraticBezierTo(x(50f), y(74f), x(39f), y(69f))
                             close()
                         },
-                        color = Color(0xFF3A2E1B),
+                        color = Color(0xFF241C10),
                     )
                     drawPath(
                         Path().apply {
-                            moveTo(x(47f), y(45.4f))
-                            quadraticBezierTo(x(50f), y(49.6f), x(53f), y(45.4f))
+                            moveTo(x(45f), y(73.6f))
+                            quadraticBezierTo(x(50f), y(78f), x(55f), y(73.6f))
+                            quadraticBezierTo(x(50f), y(76.4f), x(45f), y(73.6f))
                             close()
                         },
-                        color = Color(0xFFE2906B),
+                        color = Color(0xFFD97C64),
                     )
                 }
                 mood == PistachioMood.Sulk -> {
-                    // بغض — لب جمع‌شدهٔ کوچک
                     drawPath(
                         Path().apply {
-                            moveTo(x(45f), y(45.5f))
-                            quadraticBezierTo(x(50f), y(43f), x(55f), y(45.5f))
+                            moveTo(x(45f), y(72f))
+                            quadraticBezierTo(x(50f), y(69.6f), x(55f), y(72f))
                         },
-                        color = Color(0xFF3A2E1B),
+                        color = Color(0xFF241C10),
                         style = Stroke(2f * u, cap = StrokeCap.Round),
                     )
                 }
                 mood == PistachioMood.Cry -> {
-                    // دهان موجیِ غمگین
                     drawPath(
                         Path().apply {
-                            moveTo(x(44f), y(45f))
-                            quadraticBezierTo(x(47f), y(42.5f), x(50f), y(45f))
-                            quadraticBezierTo(x(53f), y(47.5f), x(56f), y(45f))
+                            moveTo(x(44f), y(72f))
+                            quadraticBezierTo(x(47f), y(69.5f), x(50f), y(72f))
+                            quadraticBezierTo(x(53f), y(74.5f), x(56f), y(72f))
                         },
-                        color = Color(0xFF3A2E1B),
+                        color = Color(0xFF241C10),
                         style = Stroke(1.9f * u, cap = StrokeCap.Round),
                     )
                 }
                 mood == PistachioMood.Think -> {
-                    // دهان گرد کوچک «هوم...»
                     drawOval(
-                        color = Color(0xFF3A2E1B),
-                        topLeft = Offset(x(47f), y(42f)),
+                        color = Color(0xFF241C10),
+                        topLeft = Offset(x(47f), y(69f)),
                         size = Size(x(6f), x(7f)),
                     )
                     // سه نقطهٔ فکر کنار برگچه
-                    listOf(Offset(x(76f), y(7f)), Offset(x(81f), y(12f)), Offset(x(76f), y(17f))).forEachIndexed { i, c ->
+                    listOf(Offset(x(76f), y(9f)), Offset(x(81f), y(14f)), Offset(x(76f), y(19f))).forEachIndexed { i, c ->
                         drawCircle(
                             Color(0xFF6E4322).copy(alpha = 0.45f + 0.2f * i),
                             radius = x(1.2f),
@@ -332,28 +393,12 @@ fun Pistachio(
                 }
             }
 
-            // ---------- پاپیون هم‌رنگ تم — پایین پوسته
-            val bow = Path().apply {
-                moveTo(x(50f), y(72f))
-                lineTo(x(42.5f), y(67.6f))
-                quadraticBezierTo(x(40.8f), y(72f), x(42.5f), y(76.4f))
-                close()
-                moveTo(x(50f), y(72f))
-                lineTo(x(57.5f), y(67.6f))
-                quadraticBezierTo(x(59.2f), y(72f), x(57.5f), y(76.4f))
-                close()
-            }
-            drawPath(bow, color = themeTint.copy(alpha = 0.92f))
-            drawPath(bow, color = Color.Black.copy(alpha = 0.10f), style = Stroke(0.7f * u))
-            drawCircle(themeTint, radius = x(1.9f), center = Offset(x(50f), y(72f)))
-            drawCircle(Color.White.copy(alpha = 0.55f), radius = x(0.7f), center = Offset(x(49.2f), y(71.2f)))
-
             // برق کوچک روی لپ — جذابیت سه‌بعدی
-            rotate(-18f, pivot = Offset(x(34.6f), y(41f))) {
+            rotate(-18f, pivot = Offset(x(27f), y(66f))) {
                 drawOval(
-                    Color.White.copy(alpha = 0.32f),
-                    topLeft = Offset(x(32f), y(39f)),
-                    size = Size(x(5f), x(2.6f)),
+                    Color.White.copy(alpha = 0.30f),
+                    topLeft = Offset(x(24.6f), y(64.8f)),
+                    size = Size(x(5f), x(2.4f)),
                 )
             }
         }

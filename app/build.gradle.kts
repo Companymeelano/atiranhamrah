@@ -12,8 +12,8 @@ android {
         applicationId = "ir.atiran.hamrah.viewer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "4.9.1"
+        versionCode = 32
+        versionName = "4.9.2"
     }
 
     buildTypes {
@@ -60,4 +60,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.mssql.jdbc)
+    // درایور جایگزین بدون TLS — برای سرورهایی که TLS قدیمی دارند
+    // (ویندوز بدون دست‌زدن TLS وصل می‌شود؛ این درایور همان کار را می‌کند)
+    implementation(libs.jtds)
 }

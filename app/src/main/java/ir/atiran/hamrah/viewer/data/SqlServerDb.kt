@@ -3,7 +3,6 @@ package ir.atiran.hamrah.viewer.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
-import java.sql.DriverManager
 import java.util.Properties
 
 class AtiranDbException(message: String) : Exception(message)
@@ -31,9 +30,22 @@ class SqlServerDb(private val cfg: DbSettings) {
 
     companion object {
         init {
-            // بارگذاری صریح درایور (در اندروید ServiceLoader قابل اتکا نیست)
+            // بارگذاری صریح درایورها (در اندروید ServiceLoader قابل اتکا نیست)
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver")
+            try {
+                Class.forName("net.sourceforge.jtds.jdbc.Driver")
+            } catch (_: Throwable) {
+                // درایور جایگزین موجود نیست — موتور اصلی کافی است
+            }
         }
+
+        /** حالت اتصالی که در کل عمر برنامه جواب داده — بین اتصال‌های مختلف به اشتراک */
+        @Volatile
+        private var lastGoodMode: Int? = null
+
+        /** درایورها — صریح نمونه‌سازی می‌شوند؛ نه DriverManager */
+        private val mssqlDriver by lazy { com.microsoft.sqlserver.jdbc.SQLServerDriver() }
+        private val jtdsDriver by lazy { net.sourceforge.jtds.jdbc.Driver() }
 
         private val TEXT_TYPES = setOf(
             "char", "nchar", "varchar", "nvarchar", "text", "ntext", "sysname"
@@ -128,7 +140,15 @@ class SqlServerDb(private val cfg: DbSettings) {
     private val serverHost: String get() = target.host
     private val instanceName: String? get() = target.instance
 
-    /** حالت اتصال که قبلاً جواب داده: ۰=TLS پیش‌فرض، ۱=TLS با پروتکل JSSE، ۲=بدون رمزنگاری */
+    /**
+     * حالت اتصال که قبلاً جواب داده:
+     *  ۰ = mssql-jdbc بدون رمزنگاری (الگوی ثابت‌شدهٔ نسخهٔ ویندوز M•R)
+     *  ۱ = jTDS بدون TLS (بدون هیچ دست‌زدنی — برای سرورهای TLS قدیمی که
+     *      ویندوز با آن‌ها کار می‌کند ولی TLS جدید اندروید نه)
+     *  ۲ = mssql-jdbc با TLS + trust
+     *  ۳ = mssql-jdbc با TLS + sslProtocol=TLS (JSSE)
+     * بین اجراها هم به‌خاطر سپرده می‌شود تا اتصال بعدی سریع باشد.
+     */
     @Volatile
     private var mode: Int? = null
 
@@ -139,13 +159,23 @@ class SqlServerDb(private val cfg: DbSettings) {
      *  2 = بدون رمزنگاری
      */
     private fun urlFor(m: Int, timeoutSec: Int = 15, portOverride: Int? = null): String {
-        val sb = StringBuilder("jdbc:sqlserver://").append(serverHost)
         val port = portOverride ?: target.port
+        // حالت ۱ = درایور jTDS — بدون TLS، مثل اتصال‌های قدیمی ویندوز
+        if (m == 1) {
+            val sb = StringBuilder("jdbc:jtds:sqlserver://").append(serverHost)
+            if (port != null) sb.append(":").append(port)
+            sb.append("/").append(cfg.database.trim())
+            sb.append(";loginTimeout=").append(timeoutSec.coerceAtMost(30))
+            sb.append(";socketTimeout=").append(60)
+            if (instanceName != null) sb.append(";instance=").append(instanceName)
+            return sb.toString()
+        }
+        val sb = StringBuilder("jdbc:sqlserver://").append(serverHost)
         if (port != null) sb.append(":").append(port)
         sb.append(";databaseName=").append(cfg.database.trim())
         when (m) {
-            2 -> sb.append(";encrypt=false;trustServerCertificate=true")
-            1 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLS")
+            0 -> sb.append(";encrypt=false;trustServerCertificate=true")
+            3 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLS")
             else -> sb.append(";encrypt=true;trustServerCertificate=true")
         }
         sb.append(";loginTimeout=").append(timeoutSec)
@@ -155,8 +185,31 @@ class SqlServerDb(private val cfg: DbSettings) {
         return sb.toString()
     }
 
+    /** نمونهٔ صریح درایور — نه DriverManager؛ در اندروید کشف خودکار سرویس‌ها قابل‌اعتماد نیست */
+    private fun connectOnce(m: Int, timeoutSec: Int = 15, portOverride: Int? = null): Connection {
+        val url = urlFor(m, timeoutSec, portOverride)
+        val conn = if (m == 1) jtdsDriver.connect(url, props()) else mssqlDriver.connect(url, props())
+        if (conn == null) throw AtiranDbException("درایور نشست URL را نپذیرفت (حالت $m)")
+        return conn
+    }
+
+    /** پیش‌آزمون خام TCP — اگر شبکه اصلاً به سرور نرسد، فوراً خطای روشن بده (نه انتظار ۲ دقیقه‌ای) */
+    private fun rawTcpProbe(timeoutMs: Int = 4000): Throwable? {
+        val port = target.port ?: return null // بدون پورت مشخص، درایور خودش از Browser می‌پرسد
+        return try {
+            java.net.Socket().use { s ->
+                s.tcpNoDelay = true
+                s.connect(java.net.InetSocketAddress(serverHost, port), timeoutMs)
+            }
+            null
+        } catch (e: Throwable) {
+            e
+        }
+    }
+
     /** آیا خطا با تغییر حالت اتصال قابل بازیابی است؟ */
-    private fun recoverable(e: Throwable): Boolean = isTlsError(e) || isTimeout(e)
+    private fun recoverable(e: Throwable): Boolean =
+        e is LinkageError || isTlsError(e) || isTimeout(e)
 
     /** آیا خطا مربوط به رمزنگاری/دست‌دادن TLS است؟ */
     private fun isTlsError(e: Throwable): Boolean {
@@ -186,9 +239,9 @@ class SqlServerDb(private val cfg: DbSettings) {
      */
     private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
         var last: Throwable? = null
-        for (m in intArrayOf(2, 0, 1)) {
+        for (m in intArrayOf(0, 1, 2, 3)) {
             try {
-                DriverManager.getConnection(urlFor(m, timeoutSec, port), props()).use { }
+                connectOnce(m, timeoutSec, port).use { }
                 return null
             } catch (e: Throwable) {
                 if (!recoverable(e)) return e
@@ -266,17 +319,40 @@ class SqlServerDb(private val cfg: DbSettings) {
      * حالت جواب‌داده به‌خاطر سپرده می‌شود تا اتصال‌های بعدی سریع باشند.
      */
     private fun open(): Connection {
-        mode?.let { m -> return DriverManager.getConnection(urlFor(m), props()) }
-        var last: Throwable? = null
-        for (m in intArrayOf(2, 0, 1)) {
+        mode?.let { m -> return connectOnce(m) }
+        // حالتی که قبلاً جواب داده — اگر هم‌اکنون هم جواب داد، سریع‌ترین راه است
+        lastGoodMode?.let { m ->
             try {
-                return DriverManager.getConnection(urlFor(m), props()).also { mode = m }
+                mode = m
+                return connectOnce(m)
+            } catch (_: Throwable) {
+                mode = null // سرور عوض شده — جست‌وجوی کامل انجام می‌شود
+            }
+        }
+        // پیش‌آزمون شبکه — اگر TCP نرسد، پیام روشن فوری بده
+        if (mode == null && lastGoodMode == null) {
+            rawTcpProbe()?.let { tcpErr ->
+                throw AtiranDbException(
+                    "سرور روی این شبکه در دسترس نیست (" + shortErr(tcpErr) + "). " +
+                        "اگر با اینترنت همراه هستید، اپراتور ممکن است پورت دیتابیس را فیلتر کند — " +
+                        "از وای‌فای شبکه اداره یا VPN استفاده کنید."
+                )
+            }
+        }
+        var last: Throwable? = null
+        // ترتیب: الگوی ویندوز (بدون رمزنگاری) → jTDS بدون TLS → TLS → TLS/JSSE
+        for (m in intArrayOf(0, 1, 2, 3)) {
+            try {
+                return connectOnce(m).also {
+                    mode = m
+                    lastGoodMode = m
+                }
             } catch (e: Throwable) {
                 if (!recoverable(e)) throw e
                 last = e
             }
         }
-        throw last ?: AtiranDbException("اتصال به سرور در هر سه حالت رمزنگاری ناموفق بود")
+        throw last ?: AtiranDbException("اتصال به سرور در هیچ‌یک از چهار حالت ناموفق بود")
     }
 
     // ------------------------------------------------------------ عیب‌یابی
@@ -284,6 +360,36 @@ class SqlServerDb(private val cfg: DbSettings) {
      * عیب‌یابی مرحله‌به‌مرحله اتصال — دقیقاً نشان می‌دهد کدام گام می‌شکند:
      * پیدا کردن سرور (DNS) → درگاه TCP → رمزنگاری TLS → ورود → دیتابیس.
      */
+    /**
+     * آزمون مستقیم TLS روی پورت SQL — می‌فهمیم TLS سرور با اندروید کار می‌کند یا نه.
+     * اگر نکند، دلیل اصلی شکست درایور اصلی پیدا شده و jTDS جایگزین می‌شود.
+     */
+    private fun tlsProbeStep(host: String, port: Int): DiagStep = try {
+        val factory = javax.net.ssl.SSLSocketFactory.getDefault() as javax.net.ssl.SSLSocketFactory
+        val sock = factory.createSocket() as javax.net.ssl.SSLSocket
+        sock.use { s ->
+            s.connect(java.net.InetSocketAddress(host, port), 6000)
+            val all = listOf("TLSv1.3", "TLSv1.2", "TLSv1.1", "TLSv1")
+            s.enabledProtocols = s.supportedProtocols.filter { it in all || it.startsWith("TLS") }.toTypedArray()
+            s.startHandshake()
+            val proto = s.session.protocol
+            DiagStep(
+                true, "دست‌دادن TLS با سرور",
+                "برقرار شد ($proto) — رمزنگاری سازگار است",
+            )
+        }
+    } catch (e: Throwable) {
+        val m = (e.message ?: "") + " " + e.toString()
+        DiagStep(
+            false, "دست‌دادن TLS با سرور",
+            "ناموفق: " + shortErr(e),
+            if (m.contains("protocol", true) || m.contains("handshake", true) || m.contains("SSL", true))
+                "TLS سرور با اندروید سازگار نیست (معمولاً سرور فقط TLS قدیمی 1.0/1.1 دارد). " +
+                    "برنامه با درایور جایگزین (jTDS) بدون TLS ادامه می‌دهد — مثل نسخهٔ ویندوز."
+            else null,
+        )
+    }
+
     suspend fun diagnose(): List<DiagStep> = withContext(Dispatchers.IO) {
         val steps = ArrayList<DiagStep>()
 
@@ -376,13 +482,18 @@ class SqlServerDb(private val cfg: DbSettings) {
             )
         }
 
-        // گام ۳ تا ۵: اتصال کامل — سه حالت رمزنگاری، ورود، دیتابیس
+        // گام ۲.۵: آزمون دست‌دادن TLS — آیا TLS سرور با اندروید سازگار است؟
+        if (instanceName == null || target.port != null) {
+            steps += tlsProbeStep(serverHost, portNum)
+        }
+
+        // گام ۳ تا ۵: اتصال کامل — چهار موتور (الگوی ویندوز، jTDS، TLS، TLS/JSSE)، ورود، دیتابیس
         try {
             var connectedMode = -1
             var modeErr: Throwable? = null
-            for (m in intArrayOf(0, 1, 2)) {
+            for (m in intArrayOf(0, 1, 2, 3)) {
                 try {
-                    DriverManager.getConnection(urlFor(m, 15), props()).use { }
+                    connectOnce(m, 15).use { }
                     connectedMode = m
                     break
                 } catch (e: Throwable) {
@@ -394,17 +505,21 @@ class SqlServerDb(private val cfg: DbSettings) {
                 throw modeErr ?: AtiranDbException("هیچ حالت اتصال جواب نداد")
             }
             when (connectedMode) {
-                0 -> steps += DiagStep(true, "رمزنگاری اتصال (TLS)", "دست‌دادن امن با سرور موفق بود")
+                0 -> steps += DiagStep(
+                    true, "رمزنگاری اتصال",
+                    "اتصال بدون رمزنگاری برقرار شد (الگوی نسخهٔ ویندوز M•R)",
+                )
                 1 -> steps += DiagStep(
+                    true, "رمزنگاری اتصال",
+                    "اتصال با درایور جایگزین (jTDS) برقرار شد — بدون دست‌زدن TLS",
+                    "TLS سرور با اندروید هم‌خوان نبود؛ درایور جایگزین مثل ویندوزهای قدیمی بدون TLS وصل شد.",
+                )
+                3 -> steps += DiagStep(
                     true, "رمزنگاری اتصال (TLS)",
                     "اتصال امن با پروتکل جایگزین برقرار شد",
                     "پروتکل پیش‌فرض درایور با سرور شما هم‌خوان نبود؛ برنامه خودش حالت سازگار را پیدا کرد.",
                 )
-                else -> steps += DiagStep(
-                    true, "رمزنگاری اتصال",
-                    "سرور TLS را نپذیرفت — اتصال بدون رمزنگاری برقرار شد",
-                    "برای امنیت بیشتر، TLS 1.2 را در سرور فعال کنید.",
-                )
+                else -> steps += DiagStep(true, "رمزنگاری اتصال (TLS)", "دست‌دادن امن با سرور موفق بود")
             }
             steps += DiagStep(true, "ورود با نام کاربری و رمز", "اعتبارنامه پذیرفته شد")
             steps += DiagStep(true, "باز کردن دیتابیس «" + cfg.database.trim() + "»", "دیتابیس در دسترس است")

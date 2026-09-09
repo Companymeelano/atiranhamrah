@@ -1,89 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  پسته — شخصیت زندهٔ M•REPORT 🥜
-  بازسازی دقیق و مشابه تصویر مرجع (تصویر بارگذاری‌شده در ریپو):
-  پوستهٔ بادامی با گرادیان بژ واقعی، شکاف پوسته، برگچهٔ سر، مغز سبز
-  خندان با چشمک تک‌چشمیِ امضا، لپ‌های گیج، دهان خنده با زبان و
-  پاپیون برند. نسخهٔ زندهٔ این شخصیت (پلک‌زدن، پرش، پنج حالت چهره،
+  پسته — شخصیت زندهٔ M•REPORT 🥜 (نسخهٔ ۲ — بازسازی دقیق از تحلیل تصویر مرجع)
+  
+  ساختار (مطابق اجزای تشخیص‌داده‌شده در تصویر IMG_20260909_040525_001.jpg):
+  · پوستهٔ تیرهٔ پسته در دو نیمهٔ باز (بالا-چپ و بالا-راست) — قهوه‌ای تیره #4A1F0D→#7B3E1E
+  · بدن/مغز کرمی گرد و بزرگ در مرکز — #FBF2DA→#D9BE93
+  · برگچهٔ سبز عمودی روی سر — #6E8F2A→#A9C43C
+  · دو چشم غول‌پیکر براق مشکی (۲۲٪ ارتفاع صورت!) با هایلایت‌های سفید
+  · لبخند پهن مشکی + زبان
+  · دو دست سبز بالا برده در حال تکان‌دادن (دو بازوی سبز در تصویر مرجع)
+  · دو پای سبز کوچک
+  
+  نسخهٔ زندهٔ این شخصیت (پلک‌زدن، خواب، پرش، پنج حالت چهره، تکان‌دادن دست،
   واکنش به لمس) در Pistachio.kt به‌صورت Canvas اجرا می‌شود.
   Milad Yaghoobi · Meelano Studio Design
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
   <defs>
-    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#E6CB98" stop-opacity="0.42"/>
+    <radialGradient id="halo" cx="50%" cy="55%" r="50%">
+      <stop offset="0%" stop-color="#E6CB98" stop-opacity="0.40"/>
       <stop offset="100%" stop-color="#E6CB98" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="shell" x1="50" y1="5" x2="50" y2="91" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#E6CB98"/>
-      <stop offset="50%" stop-color="#D2AE79"/>
-      <stop offset="100%" stop-color="#B08A55"/>
+    <linearGradient id="shellL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7B3E1E"/>
+      <stop offset="100%" stop-color="#4A1F0D"/>
     </linearGradient>
-    <linearGradient id="shellEdge" x1="50" y1="5" x2="50" y2="91" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#9A7A4C"/>
-      <stop offset="100%" stop-color="#8A6B42"/>
+    <linearGradient id="shellR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6B3418"/>
+      <stop offset="100%" stop-color="#3F1B0C"/>
     </linearGradient>
-    <radialGradient id="kernel" cx="50" cy="33" r="27" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#BBD68F"/>
-      <stop offset="60%" stop-color="#8FB260"/>
-      <stop offset="100%" stop-color="#7A9A50"/>
-    </radialGradient>
+    <linearGradient id="body" x1="50" y1="22" x2="50" y2="94" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FBF2DA"/>
+      <stop offset="55%" stop-color="#EFDCB6"/>
+      <stop offset="100%" stop-color="#D9BE93"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="58" y1="8" x2="50" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A9C43C"/>
+      <stop offset="100%" stop-color="#6E8F2A"/>
+    </linearGradient>
+    <linearGradient id="arm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8FA834"/>
+      <stop offset="100%" stop-color="#66831F"/>
+    </linearGradient>
     <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="tear" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#9CD5F2"/>
-      <stop offset="100%" stop-color="#5FB0DC"/>
     </linearGradient>
   </defs>
 
-  <!-- هالهٔ نور گرم پشت پسته — عمق با نور، نه سایه -->
-  <circle cx="50" cy="50" r="49" fill="url(#halo)"/>
+  <!-- هالهٔ نور گرم — عمق با نور، نه سایه -->
+  <circle cx="50" cy="55" r="49" fill="url(#halo)"/>
 
-  <!-- پوستهٔ بادامی — گرادیان بژ واقعی -->
-  <path d="M50,5 C79,15 89,48 74,75 C64,91 36,91 26,75 C11,48 21,15 50,5 Z"
-        fill="url(#shell)" stroke="url(#shellEdge)" stroke-width="1.7"/>
+  <!-- نیمهٔ چپ پوستهٔ تیره — باز شده به بالا-چپ -->
+  <path d="M50,12 C36,14 24,24 20,40 C17,52 22,66 34,74 C26,60 27,44 36,32 C42,24 48,18 56,16 Z"
+        fill="url(#shellL)" stroke="#33150A" stroke-width="1.0"/>
+  <!-- نیمهٔ راست پوستهٔ تیره — باز شده به بالا-راست -->
+  <path d="M50,12 C64,14 76,24 80,40 C83,52 78,66 66,74 C74,60 73,44 64,32 C58,24 52,18 44,16 Z"
+        fill="url(#shellR)" stroke="#33150A" stroke-width="1.0"/>
 
-  <!-- برق نور روی پوسته -->
-  <ellipse cx="41" cy="33" rx="11" ry="17" fill="url(#shine)"/>
+  <!-- برگچهٔ سبز روی سر — تیره‌پشت بدن -->
+  <path d="M52,32 C48,26 47,18 51,10 C55,4 61,3 64,6 C60,8 57,13 57,20 C57,25 56,29 54,33 Z"
+        fill="url(#leaf)" stroke="#546E1E" stroke-width="0.8"/>
+  <path d="M53,31 C53,24 54,17 57,11" fill="none" stroke="#546E1E" stroke-width="0.8" stroke-linecap="round"/>
 
-  <!-- شکاف پوسته — خط باریک بالا -->
-  <path d="M50,6 Q46,16 50.5,26" fill="none" stroke="#8A6B42" stroke-width="2.1" stroke-linecap="round"/>
+  <!-- بدن کرمی — مغز پسته -->
+  <ellipse cx="50" cy="60" rx="31" ry="33" fill="url(#body)" stroke="#C9AC80" stroke-width="1.2"/>
 
-  <!-- برگچهٔ سر پسته -->
-  <path d="M50,8 Q57,0.5 66,4.5 Q58.5,11.5 50,8 Z" fill="#6F9A4E"/>
-  <path d="M50,9 L48,4.5" fill="none" stroke="#5D7A40" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- نور نقطه‌ای روی بدن -->
+  <ellipse cx="38" cy="36" rx="12" ry="9" fill="url(#shine)" opacity="0.55"/>
 
-  <!-- مغز سبز — صحنهٔ صورت -->
-  <ellipse cx="50" cy="39" rx="25" ry="19" fill="url(#kernel)"/>
+  <!-- دست چپ سبز — بالا برده -->
+  <path d="M27,64 C22,58 17,51 13,45" fill="none" stroke="url(#arm)" stroke-width="7" stroke-linecap="round"/>
+  <!-- دست راست سبز — بالا برده (در حال تکان‌دادن!) -->
+  <path d="M73,64 C78,58 83,51 87,45" fill="none" stroke="url(#arm)" stroke-width="7" stroke-linecap="round"/>
 
-  <!-- لپ‌های گیج -->
-  <circle cx="34.6" cy="41" r="4.2" fill="#E2906B" fill-opacity="0.55"/>
-  <circle cx="65.4" cy="41" r="4.2" fill="#E2906B" fill-opacity="0.55"/>
+  <!-- پاهای سبز -->
+  <path d="M43,91 L43,96" stroke="#5C7820" stroke-width="7" stroke-linecap="round"/>
+  <path d="M57,91 L57,96" stroke="#5C7820" stroke-width="7" stroke-linecap="round"/>
 
-  <!-- چشم چپ — باز با برق چشم -->
-  <circle cx="41" cy="35" r="4.4" fill="#FCF8EE"/>
-  <circle cx="41" cy="35" r="2.2" fill="#3A2E1B"/>
-  <circle cx="39.8" cy="34" r="0.8" fill="#FFFFFF" fill-opacity="0.85"/>
+  <!-- چشم چپ — غول‌پیکر و براق -->
+  <ellipse cx="37" cy="54" rx="8.8" ry="10" fill="#241C10"/>
+  <circle cx="34.4" cy="50.8" r="3.0" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="39.6" cy="57.6" r="1.2" fill="#FFFFFF" opacity="0.65"/>
 
-  <!-- چشم راست — چشمک خندان (امضای پسته!) -->
-  <path d="M55,35.4 Q59,32 63,35.4" fill="none" stroke="#3A2E1B" stroke-width="1.9" stroke-linecap="round"/>
+  <!-- چشم راست — غول‌پیکر و براق (کمی بزرگ‌تر، مثل تصویر مرجع) -->
+  <ellipse cx="63" cy="55" rx="9.8" ry="11" fill="#241C10"/>
+  <circle cx="60" cy="51.4" r="3.3" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="66" cy="59.2" r="1.3" fill="#FFFFFF" opacity="0.65"/>
 
-  <!-- ابروها — راستی بالا رفته از توّقی! -->
-  <path d="M37.2,28.5 Q41,25.6 44.8,28.5" fill="none" stroke="#3A2E1B" stroke-width="1.7" stroke-linecap="round"/>
-  <path d="M55.2,25.3 Q59,22.4 62.8,25.3" fill="none" stroke="#3A2E1B" stroke-width="1.7" stroke-linecap="round"/>
+  <!-- لپ‌های نرم -->
+  <ellipse cx="27" cy="66" rx="4.6" ry="2.8" fill="#F0C9A4" opacity="0.55"/>
+  <ellipse cx="73" cy="66" rx="4.6" ry="2.8" fill="#F0C9A4" opacity="0.55"/>
 
-  <!-- دهان خندهٔ باز + زبان -->
-  <path d="M43.5,41.5 Q50,49.5 56.5,41.5 Z" fill="#3A2E1B"/>
-  <path d="M47,45.4 Q50,49.6 53,45.4 Z" fill="#E2906B"/>
-
-  <!-- پاپیون برند (در نسخهٔ زنده هم‌رنگ تم کاربر) -->
-  <path d="M50,72 L42.5,67.6 Q40.8,72 42.5,76.4 Z" fill="#8A76E8" fill-opacity="0.92" stroke="#000000" stroke-opacity="0.10" stroke-width="0.7"/>
-  <path d="M50,72 L57.5,67.6 Q59.2,72 57.5,76.4 Z" fill="#8A76E8" fill-opacity="0.92" stroke="#000000" stroke-opacity="0.10" stroke-width="0.7"/>
-  <circle cx="50" cy="72" r="1.9" fill="#8A76E8"/>
-  <circle cx="49.2" cy="71.2" r="0.7" fill="#FFFFFF" fill-opacity="0.55"/>
-
-  <!-- برق کوچک روی لپ — جذابیت سه‌بعدی -->
-  <ellipse cx="34.6" cy="41" rx="2.5" ry="1.3" fill="#FFFFFF" fill-opacity="0.32" transform="rotate(-18 34.6 41)"/>
+  <!-- لبخند پهن مشکی + زبان -->
+  <path d="M39,69 Q50,79 61,69 Q50,74 39,69 Z" fill="#241C10"/>
+  <path d="M45,73.6 Q50,78 55,73.6 Q50,76.4 45,73.6 Z" fill="#D97C64"/>
 </svg>
