@@ -45,8 +45,8 @@
                     <item android:offset="1.0" android:color="#FF4A1F0D" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeColor">#FF33150A</aapt:attr>
-            <aapt:attr name="android:strokeWidth">1.0</aapt:attr>
+            android:strokeColor="#FF33150A"
+            android:strokeWidth="1.0"
         </path>
 
         <!-- نیمهٔ راست پوستهٔ تیره -->
@@ -62,8 +62,8 @@
                     <item android:offset="1.0" android:color="#FF3F1B0C" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeColor">#FF33150A</aapt:attr>
-            <aapt:attr name="android:strokeWidth">1.0</aapt:attr>
+            android:strokeColor="#FF33150A"
+            android:strokeWidth="1.0"
         </path>
 
         <!-- برگچهٔ سبز سر -->
@@ -79,8 +79,8 @@
                     <item android:offset="1.0" android:color="#FF6E8F2A" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeColor">#FF546E1E</aapt:attr>
-            <aapt:attr name="android:strokeWidth">0.8</aapt:attr>
+            android:strokeColor="#FF546E1E"
+            android:strokeWidth="0.8"
         </path>
         <path
             android:pathData="M53,31 C53,24 54,17 57,11"
@@ -108,8 +108,8 @@
                     <item android:offset="1.0" android:color="#FF66831F" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeWidth">7</aapt:attr>
-            <aapt:attr name="android:strokeLineCap">round</aapt:attr>
+            android:strokeWidth="7"
+            android:strokeLineCap="round"
         </path>
 
         <!-- دست راست سبز — بالا برده -->
@@ -125,8 +125,8 @@
                     <item android:offset="1.0" android:color="#FF66831F" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeWidth">7</aapt:attr>
-            <aapt:attr name="android:strokeLineCap">round</aapt:attr>
+            android:strokeWidth="7"
+            android:strokeLineCap="round"
         </path>
 
         <!-- بدن کرمی — مغز پسته -->
@@ -143,8 +143,8 @@
                     <item android:offset="1.0" android:color="#FFD9BE93" />
                 </gradient>
             </aapt:attr>
-            <aapt:attr name="android:strokeColor">#FFC9AC80</aapt:attr>
-            <aapt:attr name="android:strokeWidth">1.2</aapt:attr>
+            android:strokeColor="#FFC9AC80"
+            android:strokeWidth="1.2"
         </path>
         <!-- نور نقطه‌ای روی بدن -->
         <path android:pathData="M 26,36 a 12,9 0 1,0 24,0 a 12,9 0 1,0 -24,0 Z" android:fillColor="#55FFFFFF" />
