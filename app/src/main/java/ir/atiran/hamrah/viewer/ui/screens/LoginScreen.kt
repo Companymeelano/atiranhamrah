@@ -466,6 +466,13 @@ fun LoginScreen(vm: AppViewModel) {
     diag?.let { steps ->
         DiagSheet(
             steps = steps,
+            report = "M•REPORT — گزارش کامل اتصال\n" +
+                "سرور: " + host.trim() + " | پورت: " + port.trim() +
+                " | دیتابیس: " + database.trim() + " | کاربر: " + user.trim() + "\n" +
+                "خطا: " + (errorRaw ?: error ?: "—") + "\n\n" +
+                steps.joinToString("\n") { s ->
+                    (if (s.ok) "✓" else "✗") + " " + s.title + " — " + s.detail
+                },
             onUsePort = { p ->
                 port = p.toString()
                 error = null
@@ -484,9 +491,15 @@ fun LoginScreen(vm: AppViewModel) {
  * هماهنگ با تم انتخابی کاربر.
  */
 @Composable
-private fun DiagSheet(steps: List<DiagStep>, onUsePort: (Int) -> Unit, onDismiss: () -> Unit) {
+private fun DiagSheet(
+    steps: List<DiagStep>,
+    report: String,
+    onUsePort: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     val suggested = steps.firstNotNullOfOrNull { it.suggestedPort }
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -589,6 +602,16 @@ private fun DiagSheet(steps: List<DiagStep>, onUsePort: (Int) -> Unit, onDismiss
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
             }
+            MrPillButton(
+                label = "کپی گزارش کامل (برای پشتیبانی)",
+                onClick = {
+                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(report))
+                    SoundFx.success()
+                },
+                icon = MrIcons.Excel,
+                tint = scheme.primary,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
             MrPillButton(
                 label = "بستن",
                 onClick = onDismiss,

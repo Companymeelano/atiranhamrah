@@ -147,6 +147,8 @@ class SqlServerDb(private val cfg: DbSettings) {
      *      ویندوز با آن‌ها کار می‌کند ولی TLS جدید اندروید نه)
      *  ۲ = mssql-jdbc با TLS + trust
      *  ۳ = mssql-jdbc با TLS + sslProtocol=TLS (JSSE)
+     *  ۴ = mssql-jdbc با TLS 1.1 قدیمی (سرورهای قدیمی)
+     *  ۵ = mssql-jdbc با TLS 1.0 قدیمی (سرورهای خیلی قدیمی)
      * بین اجراها هم به‌خاطر سپرده می‌شود تا اتصال بعدی سریع باشد.
      */
     @Volatile
@@ -176,6 +178,8 @@ class SqlServerDb(private val cfg: DbSettings) {
         when (m) {
             0 -> sb.append(";encrypt=false;trustServerCertificate=true")
             3 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLS")
+            4 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.1")
+            5 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1")
             else -> sb.append(";encrypt=true;trustServerCertificate=true")
         }
         sb.append(";loginTimeout=").append(timeoutSec)
@@ -239,7 +243,7 @@ class SqlServerDb(private val cfg: DbSettings) {
      */
     private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
         var last: Throwable? = null
-        for (m in intArrayOf(0, 1, 2, 3)) {
+        for (m in intArrayOf(0, 1, 2, 3, 4, 5)) {
             try {
                 connectOnce(m, timeoutSec, port).use { }
                 return null
@@ -313,9 +317,54 @@ class SqlServerDb(private val cfg: DbSettings) {
         return out.distinctBy { it.second }
     }
 
+    /** اتصال پایدار مشترک — یک‌بار ساخته می‌شود و همهٔ کوئری‌ها از آن استفاده می‌کنند */
+    @Volatile
+    private var sharedConn: Connection? = null
+    private val connLock = Any()
+
     /**
-     * اتصال سه‌مرحله‌ای: بدون رمزنگاری (الگوی ثابت‌شدهٔ نسخهٔ ویندوز M•R که
-     * روی همین سرور جواب می‌دهد) → TLS پیش‌فرض درایور → TLS با پروتکل JSSE؛
+     * گرفتن اتصال سالم — اگر اتصال قبلی زنده باشد همان برمی‌گردد (سریع و پایدار)؛
+     * در غیر این صورت با همان منطق چندموتورهٔ open() از نو ساخته می‌شود.
+     */
+    private fun connection(): Connection = synchronized(connLock) {
+        sharedConn?.let { c ->
+            try {
+                if (c.isValid(3)) return c
+            } catch (_: Throwable) {
+            }
+            try {
+                c.close()
+            } catch (_: Throwable) {
+            }
+            sharedConn = null
+        }
+        val c = open()
+        sharedConn = c
+        return c
+    }
+
+    /**
+     * اجرای یک کوئری روی اتصال پایدار — همهٔ کوئری‌ها سریال می‌شوند تا
+     * چند کوروتین هم‌زمان روی یک Connection با هم تداخل نکنند؛
+     * اگر وسط کار اتصال بمیرد، اتصال دور ریخته می‌شود تا کوئری بعدی از نو بسازد.
+     */
+    private fun <T> withConn(block: (Connection) -> T): T = synchronized(connLock) {
+        val c = connection()
+        try {
+            block(c)
+        } catch (e: Throwable) {
+            try {
+                c.close()
+            } catch (_: Throwable) {
+            }
+            sharedConn = null
+            throw e
+        }
+    }
+
+    /**
+     * اتصال چندموتوره: بدون رمزنگاری (الگوی ثابت‌شدهٔ نسخهٔ ویندوز M•R) →
+     * jTDS بدون TLS → TLS → TLS/JSSE → TLS 1.1 قدیمی → TLS 1.0 قدیمی؛
      * حالت جواب‌داده به‌خاطر سپرده می‌شود تا اتصال‌های بعدی سریع باشند.
      */
     private fun open(): Connection {
@@ -341,7 +390,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         }
         var last: Throwable? = null
         // ترتیب: الگوی ویندوز (بدون رمزنگاری) → jTDS بدون TLS → TLS → TLS/JSSE
-        for (m in intArrayOf(0, 1, 2, 3)) {
+        for (m in intArrayOf(0, 1, 2, 3, 4, 5)) {
             try {
                 return connectOnce(m).also {
                     mode = m
@@ -491,7 +540,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         try {
             var connectedMode = -1
             var modeErr: Throwable? = null
-            for (m in intArrayOf(0, 1, 2, 3)) {
+            for (m in intArrayOf(0, 1, 2, 3, 4, 5)) {
                 try {
                     connectOnce(m, 15).use { }
                     connectedMode = m
@@ -568,7 +617,7 @@ class SqlServerDb(private val cfg: DbSettings) {
      */
     suspend fun findTable(vararg candidates: String): String? = withContext(Dispatchers.IO) {
         try {
-            open().use { c ->
+            withConn { c ->
                 val names = candidates.joinToString(",") { "'" + it.replace("'", "''") + "'" }
                 val prio = candidates.mapIndexed { i, n -> "WHEN '$n' THEN ${i + 1}" }.joinToString(" ")
                 c.createStatement().use { st ->
@@ -586,6 +635,17 @@ class SqlServerDb(private val cfg: DbSettings) {
         }
     }
 
+    /** بستن اتصال پایدار — هنگام خروج کاربر */
+    fun shutdown() {
+        synchronized(connLock) {
+            try {
+                sharedConn?.close()
+            } catch (_: Throwable) {
+            }
+            sharedConn = null
+        }
+    }
+
     // ------------------------------------------------------------ ورود
     /**
      * تست اتصال هوشمند با نام کاربری/رمز — مثل نسخهٔ ویندوز M•R:
@@ -594,7 +654,7 @@ class SqlServerDb(private val cfg: DbSettings) {
      * خروجی: نسخه سرور.
      */
     suspend fun test(): String = withContext(Dispatchers.IO) {
-        open().use { c ->
+        withConn { c ->
             c.createStatement().use { st ->
                 st.executeQuery("SELECT DB_NAME(), @@SERVERNAME, @@VERSION").use { rs ->
                     if (!rs.next()) throw AtiranDbException("SQL Server پاسخ قابل استفاده‌ای برنگرداند")
@@ -613,7 +673,7 @@ class SqlServerDb(private val cfg: DbSettings) {
     // ------------------------------------------------------------ نمای کلی
     /** نسخه سرور + حجم دیتابیس + لیست همه جداول با تعداد رکورد */
     suspend fun overview(): Overview = withContext(Dispatchers.IO) {
-        open().use { c ->
+        withConn { c ->
             val version = try {
                 c.createStatement().use { st ->
                     st.executeQuery("SELECT @@VERSION").use { rs ->
@@ -672,12 +732,12 @@ class SqlServerDb(private val cfg: DbSettings) {
 
     /** ستون‌های یک جدول — برای تشخیص نقش‌ها در نگاشت بخش‌ها */
     suspend fun columns(schema: String, table: String): List<ColumnInfo> = withContext(Dispatchers.IO) {
-        open().use { c -> columnsOf(c, schema, table) }
+        withConn { c -> columnsOf(c, schema, table) }
     }
 
     /** تعداد کل رکوردهای یک جدول */
     suspend fun count(schema: String, table: String): Long = withContext(Dispatchers.IO) {
-        open().use { c ->
+        withConn { c ->
             c.createStatement().use { st ->
                 st.executeQuery("SELECT COUNT_BIG(*) FROM ${q(schema)}.${q(table)}").use { rs ->
                     rs.next()
@@ -690,7 +750,7 @@ class SqlServerDb(private val cfg: DbSettings) {
     /** مجموع یک ستون عددی — برای گردش مالی (خطا → null) */
     suspend fun sumOf(schema: String, table: String, col: String): Double? = withContext(Dispatchers.IO) {
         try {
-            open().use { c ->
+            withConn { c ->
                 c.createStatement().use { st ->
                     st.executeQuery("SELECT SUM(CAST(${q(col)} AS FLOAT)) FROM ${q(schema)}.${q(table)}").use { rs ->
                         if (rs.next()) rs.getDouble(1).takeIf { !rs.wasNull() } else null
@@ -705,7 +765,7 @@ class SqlServerDb(private val cfg: DbSettings) {
     /** N رکورد اول به‌ترتیب نزولی یک ستون — «برترین‌ها» */
     suspend fun topBy(schema: String, table: String, orderCol: String, limit: Int): Pair<List<String>, List<List<String?>>> =
         withContext(Dispatchers.IO) {
-            open().use { c ->
+            withConn { c ->
                 val cols = columnsOf(c, schema, table)
                 if (cols.none { it.name == orderCol }) {
                     throw AtiranDbException("ستون «$orderCol» در جدول «$table» یافت نشد")
@@ -721,7 +781,7 @@ class SqlServerDb(private val cfg: DbSettings) {
     /** N رکورد آخر بر اساس ستون تاریخ */
     suspend fun latestBy(schema: String, table: String, dateCol: String, limit: Int): Pair<List<String>, List<List<String?>>> =
         withContext(Dispatchers.IO) {
-            open().use { c ->
+            withConn { c ->
                 val cols = columnsOf(c, schema, table)
                 if (cols.none { it.name == dateCol }) {
                     throw AtiranDbException("ستون «$dateCol» در جدول «$table» یافت نشد")
@@ -798,7 +858,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         limit: Long,
         searchQuery: String,
     ): PageData = withContext(Dispatchers.IO) {
-        open().use { c ->
+        withConn { c ->
             val cols = columnsOf(c, schema, table)
             val tableRef = "${q(schema)}.${q(table)}"
 

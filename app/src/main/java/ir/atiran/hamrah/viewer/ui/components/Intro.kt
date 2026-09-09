@@ -1,34 +1,43 @@
 package ir.atiran.hamrah.viewer.ui.components
 
 /**
- * فیلم کوتاه ورود M•REPORT — «پسته و شیفت صبحگاهی» 🥜
+ * سکانس سینمایی ورود M•REPORT — «میز کار آجیل» 🥜
  *
- * پرده ۱ — خواب عمیق: پسته خروپف می‌کند و «ز ز ز» بالای سرش شناور است.
- * پرده ۲ — آلارم!: ساعت زنگ‌دار از بالا می‌افتد، می‌پرد و «بوق! بوق!» می‌زند؛
- *          پسته با چشم‌های غول‌پیکر از خواب می‌پرد!
- * پرده ۳ — بیرون‌پریدن از پوسته: دو نیمهٔ پوسته به دو طرف پرواز می‌کنند،
- *          غبار بلند می‌شود و پسته فرود می‌آید.
- * پرده ۴ — خوش‌آمدگویی: دست‌ها را تکان می‌دهد، چشمک می‌زند و جملات
- *          خنده‌دار می‌گوید؛ کاغذرنگی پسته‌ای می‌بارد و دکمهٔ «بزن بریم!».
- * لمس صفحه در هر لحظه = رد کردن.
+ * یک ویدئوی کوتاه کاملاً واقعی و لوکس:
+ *  نور گرم مطالعه روی میز چوبی، ذرات غبار معلق در نور، مشتی پستهٔ واقعی
+ *  روی میز، نمودار ستونی شیشه‌ای و حلقهٔ طلایی فلزی که با هم بالا می‌آیند،
+ *  شمارنده‌های زندهٔ فروش، و در انتها قهرمانِ فتورئال (پسته) با چشم‌های
+ *  براق فرود می‌آید و به شما چشمک می‌زند.
+ *
+ *  پرده‌ها (خط زمانی ۰→۱ در ۹.۲ ثانیه):
+ *   ۰.۰۸–۰.۴۲ نمودارها بالا می‌آیند · ۰.۱۴–۰.۴۴ حلقهٔ طلایی می‌چرخد داخل صحنه
+ *   ۰.۳۰–۰.۵۴ پستهٔ قهرمان با جهش فرود می‌آید · ۰.۵۲+ لوگوی طلایی و شمارنده‌ها
+ *   ۰.۸۰+ دکمهٔ «ورود به گزارش‌ها»
+ *  لمس صفحه = رد کردن.
  */
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -41,50 +50,71 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.atiran.hamrah.viewer.R
+import ir.atiran.hamrah.viewer.data.TableHeuristics
 import ir.atiran.hamrah.viewer.ui.theme.LocalThemeExtras
 import ir.atiran.hamrah.viewer.utils.SoundFx
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.sin
 
+/** پیشرفت نرم */
+private fun easeOutCubic(p: Float): Float = 1f - (1f - p).let { it * it * it }
+
+/** فرود با جهش — overshoot ملایم */
+private fun landBounce(p: Float): Float {
+    val q = p.coerceIn(0f, 1f)
+    return if (q < 0.7f) {
+        val k = q / 0.7f
+        k * k * (3f - 2f * k) * 1.04f
+    } else {
+        1.04f - (q - 0.7f) / 0.3f * 0.04f + sin((q - 0.7f) * PI.toFloat() * 2f) * 0.012f * (1f - q)
+    }
+}
+
 @Composable
 fun PistachioIntro(onDone: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
-    // خط زمانی کل فیلم: ۰ → ۱ در ۹ ثانیه
+    // خط زمانی کل سکانس: ۰ → ۱ در ۹.۲ ثانیه
     val t = remember { Animatable(0f) }
-
-    // پرده‌ها
-    val sleepEnd = 0.16f
-    val alarmEnd = 0.34f
-    val burstEnd = 0.52f
+    val tv = t.value
+    // تنفس بی‌پایان پس از فرود
+    val tr = rememberInfiniteTransition(label = "sceneBreath")
+    val breath by tr.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Reverse),
+        label = "breath",
+    )
 
     LaunchedEffect(Unit) {
         SoundFx.soft()
-        delay(1500)
-        SoundFx.alert()
-        delay(1700)
-        SoundFx.alert()
-        delay(1900)
+        delay(2900)
         SoundFx.success()
+        t.animateTo(1f, tween(9200, easing = LinearEasing))
+        delay(500)
+        onDone()
     }
 
     Box(
@@ -96,281 +126,324 @@ fun PistachioIntro(onDone: () -> Unit) {
                 indication = null,
             ) { onDone(); SoundFx.soft() },
     ) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val cw = maxWidth
-            val chh = maxHeight
-            val tv = t.value
-            val act = when {
-                tv < sleepEnd -> 0
-                tv < alarmEnd -> 1
-                tv < burstEnd -> 2
-                else -> 3
-            }
-            val tA = when (act) {  // پیشرفت داخل پرده (۰..۱)
-                0 -> tv / sleepEnd
-                1 -> (tv - sleepEnd) / (alarmEnd - sleepEnd)
-                2 -> (tv - alarmEnd) / (burstEnd - alarmEnd)
-                else -> (tv - burstEnd) / (1f - burstEnd)
-            }
+        // ================== صحنهٔ واقعی — میز چوبی و نور ==================
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val fadeIn = easeOutCubic((tv / 0.08f).coerceIn(0f, 1f))
+            val deskY = h * 0.64f
 
-            // زمین نورانی
-            val groundY = chh * 0.72f
-            Canvas(Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-                // نورهای محیطی هماهنگ با تم
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(extras.brand[1].copy(alpha = 0.16f), Color.Transparent)
-                    ),
-                    radius = w * 0.42f,
-                    center = Offset(w * 0.22f, h * 0.20f),
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(extras.brand.last().copy(alpha = 0.12f), Color.Transparent)
-                    ),
-                    radius = w * 0.36f,
-                    center = Offset(w * 0.85f, h * 0.75f),
-                )
-                // زمین
-                drawOval(
-                    brush = Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.10f), Color.Transparent)
-                    ),
-                    topLeft = Offset(w * 0.08f, groundY.toPx()),
-                    size = Size(w * 0.84f, h * 0.10f),
-                )
-
-                val px = w / 100f // واحد افقی درصدی
-
-                // ---------- پرده ۱: «ز ز ز» شناور
-                if (act == 0) {
-                    for (i in 0 until 3) {
-                        val phase = (tA + i * 0.33f) % 1f
-                        val zzY = (groundY - chh * 0.34f - chh * phase * 0.10f).toPx()
-                        drawCircle(
-                            Color(0xFF6E8F2A).copy(alpha = (1f - phase) * 0.5f),
-                            radius = px * (1.1f + i * 0.5f),
-                            center = Offset(w * 0.58f + phase * px * 5f, zzY),
-                        )
-                    }
-                }
-
-                // ---------- پرده ۲: ساعت زنگ‌دار
-                if (act == 1) {
-                    val drop = (tA / 0.45f).coerceIn(0f, 1f)
-                    val bounce = if (tA < 0.45f) 0f else sin((tA - 0.45f) * 3f * PI.toFloat()) * (1f - (tA - 0.45f) / 0.55f)
-                    val clockY = (groundY - chh * 0.52f * drop - chh * 0.05f * bounce.coerceAtLeast(0f)).toPx()
-                    val clockX = w * 0.62f
-                    val r = px * 7.5f
-                    // زنگ — خطوط تشعشعی
-                    if (tA > 0.4f) {
-                        val ring = ((tA * 6f) % 1f)
-                        for (a in 0 until 8) {
-                            val ang = a * PI.toFloat() / 4f + tA * 2f
-                            val rr = r * (1.3f + ring * 0.7f)
-                            drawCircle(
-                                Color(0xFFFFC94D).copy(alpha = (1f - ring) * 0.6f),
-                                radius = px * 0.9f,
-                                center = Offset(clockX + rr * kotlin.math.cos(ang), clockY - r * 0.6f + rr * sin(ang) * 0.6f),
-                            )
-                        }
-                    }
-                    // بدنه ساعت — طلایی سه‌بعدی
-                    drawCircle(
-                        brush = Brush.verticalGradient(
-                            listOf(Color(0xFFFFE1A0), Color(0xFFF3B94F), Color(0xFFC98A2E)),
-                            startY = clockY - r, endY = clockY + r,
-                        ),
-                        radius = r,
-                        center = Offset(clockX, clockY),
-                    )
-                    drawCircle(Color(0xFF8A5E1E).copy(alpha = 0.8f), radius = r, center = Offset(clockX, clockY), style = Stroke(px * 0.5f))
-                    // زنگ‌ها
-                    drawCircle(Color(0xFFF3B94F), radius = r * 0.28f, center = Offset(clockX - r * 0.72f, clockY - r * 0.85f))
-                    drawCircle(Color(0xFFF3B94F), radius = r * 0.28f, center = Offset(clockX + r * 0.72f, clockY - r * 0.85f))
-                    // عقربه‌ها
-                    drawLine(Color(0xFF5A3A10), Offset(clockX, clockY), Offset(clockX + r * 0.5f * kotlin.math.cos(tA * 20f), clockY - r * 0.5f), strokeWidth = px * 0.5f, cap = StrokeCap.Round)
-                    drawLine(Color(0xFF5A3A10), Offset(clockX, clockY), Offset(clockX + r * 0.7f * kotlin.math.cos(tA * 6f), clockY - r * 0.7f * kotlin.math.sin(tA * 6f)), strokeWidth = px * 0.4f, cap = StrokeCap.Round)
-                }
-
-                // ---------- پرده ۳: پرواز نیمه‌های پوسته + غبار
-                if (act >= 2) {
-                    val fly = tA.coerceIn(0f, 1f)
-                    val ease = fly * fly * (3f - 2f * fly)
-                    val shellAlpha = (1f - fly * 1.3f).coerceIn(0f, 1f)
-                    if (shellAlpha > 0.02f) {
-                        // نیمهٔ چپ — پرواز به چپ با چرخش
-                        val lx = w * 0.44f - ease * w * 0.42f
-                        val ly = (groundY - chh * 0.30f - chh * ease * 0.16f).toPx()
-                        rotate(-ease * 40f, pivot = Offset(lx, ly)) {
-                            val sh = Path().apply {
-                                moveTo(lx, ly - px * 16f)
-                                cubicTo(lx - px * 10f, ly - px * 10f, lx - px * 11f, ly + px * 6f, lx - px * 3f, ly + px * 14f)
-                                cubicTo(lx - px * 6f, ly + px * 2f, lx - px * 5f, ly - px * 8f, lx + px * 3f, ly - px * 13f)
-                                close()
-                            }
-                            drawPath(sh, brush = Brush.linearGradient(listOf(Color(0xFF7B3E1E), Color(0xFF4A1F0D)).map { it.copy(alpha = shellAlpha) }), )
-                            drawPath(sh, color = Color(0xFF33150A).copy(alpha = shellAlpha), style = Stroke(px * 0.4f))
-                        }
-                        // نیمهٔ راست — پرواز به راست
-                        val rx = w * 0.56f + ease * w * 0.42f
-                        val ry = (groundY - chh * 0.30f - chh * ease * 0.16f).toPx()
-                        rotate(ease * 40f, pivot = Offset(rx, ry)) {
-                            val sh = Path().apply {
-                                moveTo(rx, ry - px * 16f)
-                                cubicTo(rx + px * 10f, ry - px * 10f, rx + px * 11f, ry + px * 6f, rx + px * 3f, ry + px * 14f)
-                                cubicTo(rx + px * 6f, ry + px * 2f, rx + px * 5f, ry - px * 8f, rx - px * 3f, ry - px * 13f)
-                                close()
-                            }
-                            drawPath(sh, brush = Brush.linearGradient(listOf(Color(0xFF6B3418), Color(0xFF3F1B0C)).map { it.copy(alpha = shellAlpha) }))
-                            drawPath(sh, color = Color(0xFF33150A).copy(alpha = shellAlpha), style = Stroke(px * 0.4f))
-                        }
-                    }
-                    // غبار فرود
-                    if (fly < 0.5f) {
-                        val da = 1f - fly * 2f
-                        for (i in 0 until 6) {
-                            val ang = PI.toFloat() * (0.15f + i * 0.14f)
-                            val dd = fly * 2f * px * (8f + i * 2f)
-                            drawCircle(
-                                Color.White.copy(alpha = da * 0.35f),
-                                radius = px * (1.2f + fly * 2f),
-                                center = Offset(w * 0.5f + dd * kotlin.math.cos(ang), groundY.toPx() - dd * sin(ang) * 0.5f),
-                            )
-                        }
-                    }
-                }
-
-                // ---------- پرده ۴: بارش کاغذرنگی پسته‌ای
-                if (act == 3) {
-                    for (i in 0 until 12) {
-                        val phase = (tA * 1.4f + i * 0.083f) % 1f
-                        val fx = w * (0.08f + (i * 37 % 84) / 100f * 0.84f) + sin(phase * 3f * PI.toFloat() + i) * px * 3f
-                        val fy = phase * h
-                        val fr = px * 1.4f
-                        drawOval(
-                            if (i % 2 == 0) Color(0xFF8FB260).copy(alpha = (1f - phase) * 0.9f)
-                            else Color(0xFFD2AE79).copy(alpha = (1f - phase) * 0.9f),
-                            topLeft = Offset(fx - fr, fy - fr * 0.75f),
-                            size = Size(fr * 2f, fr * 1.5f),
-                        )
-                    }
-                }
-            }
-
-            // ---------- خودِ پسته — قهرمان فیلم
-            val tA2 = if (act == 1) tA else 0f
-            val jump = if (act == 1) chh * sin((tA2 * 1.7f).coerceAtMost(1f) * PI.toFloat()) * 0.10f else 0.dp
-            val shakeDp = if (act == 2) (sin(tA * 34f) * (1f - tA) * 10f).dp else 0.dp
-            val sizeP = cw * 0.46f
-            Pistachio(
-                size = sizeP,
-                bobbing = act == 0 || act == 3,
-                mood = if (act == 3 && tA > 0.55f) PistachioMood.Wink else PistachioMood.Happy,
-                eyesClosed = act == 0,
-                armWave = act == 3,
-                themeTint = scheme.primary,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = chh * 0.24f + jump - shakeDp),
+            // نور مطالعهٔ گرم — بالا-چپ
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFFFFE3B0).copy(alpha = 0.26f * fadeIn), Color.Transparent),
+                    center = Offset(w * 0.16f, h * 0.10f),
+                    radius = w * 0.55f,
+                ),
+                radius = w * 0.55f,
+                center = Offset(w * 0.16f, h * 0.10f),
             )
-            // «بوق! بوق!» در پردهٔ آلارم
-            if (act == 1 && tA > 0.45f) {
-                Text(
-                    "بوق! بوق!",
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 26.sp, fontWeight = FontWeight.Black),
-                    color = Color(0xFFFFC94D),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = chh * 0.66f)
-                        .background(Color(0xFF241C10).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 10.dp, vertical = 2.dp),
+            // نور محیطی تم — راست
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(extras.brand.last().copy(alpha = 0.12f * fadeIn), Color.Transparent),
+                ),
+                radius = w * 0.4f,
+                center = Offset(w * 0.88f, h * 0.30f),
+            )
+
+            // ---------- میز چوبی
+            drawRect(
+                brush = Brush.verticalGradient(
+                    listOf(Color(0xFF7A5533), Color(0xFF5C3D22), Color(0xFF3E2915)),
+                    startY = deskY, endY = h,
+                ),
+                topLeft = Offset(0f, deskY),
+                size = Size(w, h - deskY),
+            )
+            // خط افق روشن
+            drawLine(
+                Color(0xFFC9A876).copy(alpha = 0.35f * fadeIn),
+                Offset(0f, deskY), Offset(w, deskY),
+                strokeWidth = 1.2f,
+            )
+            // بافت چوب — رگه‌های موجی
+            for (i in 0 until 13) {
+                val gy = deskY + (h - deskY) * (i + 1) / 14f
+                val amp = 3f + (i % 3) * 2f
+                val phase = i * 1.7f
+                val grain = Path().apply {
+                    moveTo(0f, gy)
+                    var x = 0f
+                    while (x < w) {
+                        lineTo(x + 26f, gy + sin(x / w * 9f * PI.toFloat() + phase) * amp)
+                        x += 26f
+                    }
+                }
+                drawPath(
+                    grain,
+                    color = if (i % 2 == 0) Color(0x14302010) else Color(0x14FFDCA8),
+                    style = Stroke(1.4f),
+                )
+            }
+            // بازتاب نور روی میز
+            drawOval(
+                brush = Brush.verticalGradient(
+                    listOf(Color(0xFFFFE3B0).copy(alpha = 0.14f * fadeIn), Color.Transparent),
+                ),
+                topLeft = Offset(w * 0.05f, deskY + (h - deskY) * 0.10f),
+                size = Size(w * 0.9f, (h - deskY) * 0.8f),
+            )
+
+            // ---------- ذرات غبار معلق در نور — واقعی
+            for (i in 0 until 11) {
+                val ph = (tv * 0.22f + i * 0.093f) % 1f
+                val dx = w * (0.06f + (i * 43 % 88) / 100f * 0.88f) + sin(ph * 4f * PI.toFloat() + i) * w * 0.012f
+                val dy = h * 0.88f - ph * h * 0.72f
+                val depth = 0.35f + (i % 3) * 0.22f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(Color(0xFFFFE9C4).copy(alpha = 0.30f * fadeIn * (1f - ph * 0.4f)), Color.Transparent),
+                    ),
+                    radius = w * 0.006f * (1f + depth),
+                    center = Offset(dx, dy),
+                )
+            }
+
+            // ---------- مشتی پستهٔ واقعی روی میز — چپ
+            val pile = listOf(
+                Triple(w * 0.20f, deskY + (h - deskY) * 0.42f, w * 0.046f),
+                Triple(w * 0.30f, deskY + (h - deskY) * 0.58f, w * 0.038f),
+                Triple(w * 0.13f, deskY + (h - deskY) * 0.66f, w * 0.032f),
+            )
+            val pile2 = listOf(
+                Triple(w * 0.245f, deskY + (h - deskY) * 0.50f, w * 0.040f),
+                Triple(w * 0.35f, deskY + (h - deskY) * 0.36f, w * 0.030f),
+                Triple(w * 0.09f, deskY + (h - deskY) * 0.34f, w * 0.028f),
+            )
+            (pile + pile2).forEachIndexed { i, (px_, py_, pr_) ->
+                drawMiniPistachio(
+                    px_, py_ - pr_ * 0.55f, pr_,
+                    angle = -18f + i * 13f,
+                    alpha = fadeIn * 0.95f,
+                )
+            }
+
+            // ---------- نمودار ستونی شیشه‌ای — راست
+            val chartA = easeOutCubic(((tv - 0.10f) / 0.32f).coerceIn(0f, 1f))
+            if (chartA > 0.01f) {
+                val cx = w * 0.775f
+                val cy = h * 0.335f
+                val pw = w * 0.30f
+                val phh = h * 0.27f
+                rotate(-3.5f, pivot = Offset(cx, cy + phh / 2f)) {
+                    // پنل شیشه‌ای
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.085f), Color.White.copy(alpha = 0.03f)),
+                            startY = cy - phh / 2f, endY = cy + phh / 2f,
+                        ),
+                        topLeft = Offset(cx - pw / 2f, cy - phh / 2f),
+                        size = Size(pw, phh),
+                        cornerRadius = CornerRadius(w * 0.018f),
+                    )
+                    drawRoundRect(
+                        color = Color(0xFFE9C777).copy(alpha = 0.35f * chartA),
+                        topLeft = Offset(cx - pw / 2f, cy - phh / 2f),
+                        size = Size(pw, phh),
+                        cornerRadius = CornerRadius(w * 0.018f),
+                        style = Stroke(1.2f),
+                    )
+                    // سه ستون شیشه‌ای
+                    val base = cy + phh / 2f - pw * 0.09f
+                    val heights = listOf(0.44f, 0.68f, 0.95f)
+                    heights.forEachIndexed { i, hf ->
+                        val bp = easeOutCubic(((chartA - i * 0.16f) / (1f - i * 0.16f)).coerceIn(0f, 1f))
+                        if (bp > 0.01f) {
+                            val bw = pw * 0.16f
+                            val bx = cx - pw / 2f + pw * (0.20f + i * 0.28f)
+                            val bh = (phh * 0.72f) * hf * bp
+                            drawRoundRect(
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.42f * chartA),
+                                        Color(0xFFE9C777).copy(alpha = 0.34f * chartA),
+                                        Color(0xFFC9963C).copy(alpha = 0.16f * chartA),
+                                    ),
+                                    startY = base - bh, endY = base,
+                                ),
+                                topLeft = Offset(bx - bw / 2f, base - bh),
+                                size = Size(bw, bh),
+                                cornerRadius = CornerRadius(bw / 2f),
+                            )
+                            // درپوش روشن ستون
+                            drawOval(
+                                color = Color.White.copy(alpha = 0.55f * chartA * bp),
+                                topLeft = Offset(bx - bw / 2f + bw * 0.12f, base - bh - bw * 0.055f),
+                                size = Size(bw * 0.76f, bw * 0.11f),
+                            )
+                        }
+                    }
+                    // خط پایه
+                    drawLine(
+                        Color(0xFFE9C777).copy(alpha = 0.5f * chartA),
+                        Offset(cx - pw * 0.42f, base), Offset(cx + pw * 0.42f, base),
+                        strokeWidth = 1.4f,
+                    )
+                }
+            }
+
+            // ---------- حلقهٔ طلایی فلزی — چپ
+            val ringA = easeOutCubic(((tv - 0.14f) / 0.30f).coerceIn(0f, 1f))
+            if (ringA > 0.01f) {
+                val rcx = w * 0.185f
+                val rcy = h * 0.335f
+                val rr = w * 0.105f
+                // مسیر کم‌رنگ
+                drawCircle(
+                    color = Color(0xFFE9C777).copy(alpha = 0.14f * ringA),
+                    radius = rr,
+                    center = Offset(rcx, rcy),
+                    style = Stroke(w * 0.018f),
+                )
+                // حلقهٔ فلزی با گرادیان چرخشی
+                rotate(120f * (1f - ringA) + tv * 40f, pivot = Offset(rcx, rcy)) {
+                    drawArc(
+                        brush = Brush.sweepGradient(
+                            listOf(
+                                Color(0xFF8A5E1E), Color(0xFFE9C777), Color(0xFFFFF3D0),
+                                Color(0xFFD9A85C), Color(0xFF8A5E1E),
+                            ),
+                            center = Offset(rcx, rcy),
+                        ),
+                        startAngle = -60f,
+                        sweepAngle = 300f * ringA,
+                        useCenter = false,
+                        topLeft = Offset(rcx - rr, rcy - rr),
+                        size = Size(rr * 2f, rr * 2f),
+                        style = Stroke(w * 0.018f, cap = StrokeCap.Round),
+                    )
+                }
+                // برق روی حلقه
+                drawArc(
+                    color = Color.White.copy(alpha = 0.5f * ringA),
+                    startAngle = -20f + tv * 240f,
+                    sweepAngle = 26f,
+                    useCenter = false,
+                    topLeft = Offset(rcx - rr, rcy - rr),
+                    size = Size(rr * 2f, rr * 2f),
+                    style = Stroke(w * 0.006f, cap = StrokeCap.Round),
+                )
+            }
+
+            // ---------- سایهٔ قهرمان — با فرودش بزرگ می‌شود
+            val heroP = ((tv - 0.30f) / 0.24f).coerceIn(0f, 1f)
+            if (heroP > 0.01f) {
+                val shScale = landBounce(heroP)
+                drawOval(
+                    brush = Brush.radialGradient(
+                        listOf(Color(0x40000000).copy(alpha = 0.30f * heroP), Color.Transparent),
+                    ),
+                    topLeft = Offset(w * 0.5f - w * 0.16f * shScale, deskY + (h - deskY) * 0.30f),
+                    size = Size(w * 0.32f * shScale, w * 0.07f * shScale),
                 )
             }
         }
 
-        // ---------- تیتر
+        // ================== قهرمان — پستهٔ فتورئال ==================
+        val heroP = ((tv - 0.30f) / 0.24f).coerceIn(0f, 1f)
+        if (heroP > 0.01f) {
+            val landScale = landBounce(heroP)
+            val breathe = if (heroP >= 1f) 1f + breath * 0.010f else 1f
+            Image(
+                painter = painterResource(R.drawable.mascot_pistachio),
+                contentDescription = "پسته",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        scaleX = landScale * breathe
+                        scaleY = landScale * breathe
+                        alpha = heroP
+                        translationY = (1f - heroP) * 90f
+                    }
+                    .fillMaxWidth(0.74f)
+                    .aspectRatio(1f),
+            )
+        }
+
+        // ================== لوگو و شعار ==================
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 54.dp),
+                .padding(top = 56.dp),
         ) {
-            Text(
-                "M•REPORT",
-                style = androidx.compose.ui.text.TextStyle(
-                    brush = Brush.horizontalGradient(extras.brand),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 3.sp,
-                ),
-            )
-            Spacer(Modifier.height(4.dp))
-            MrSubtitle("Intelligent Reporting Experience")
-        }
-
-        // ---------- پردهٔ ۴: جملات خنده‌دار + دکمه
-        if (t.value >= burstEnd) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 118.dp, start = 24.dp, end = 24.dp),
+            androidx.compose.animation.AnimatedVisibility(
+                visible = tv >= 0.52f,
+                enter = fadeIn(tween(500)),
             ) {
-                val lines = listOf(
-                    "سلام! من پسته‌ام 🥜",
-                    "دیشب تا صبح دیتابیس رو چیدم — تو هنوز خوابیدی؟!",
-                    "بزن بریم، گزارش‌ها دارن سرد می‌شن! 😂",
-                )
-                lines.forEachIndexed { i, line ->
-                    val shown = t.value >= burstEnd + 0.10f + i * 0.10f
-                    AnimatedVisibility(
-                        visible = shown,
-                        enter = fadeIn() + slideInVertically(tween(260)) { it / 3 },
-                    ) {
-                        Text(
-                            line,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = scheme.onSurface,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(scheme.surface.copy(alpha = 0.92f))
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        )
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "M•REPORT",
+                        style = androidx.compose.ui.text.TextStyle(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color(0xFF8A5E1E), Color(0xFFE9C777), Color(0xFFFFF3D0), Color(0xFFD9A85C))
+                            ),
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 4.sp,
+                        ),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    MrSubtitle("Intelligent Reporting Experience")
                 }
             }
         }
 
-        // دکمهٔ «بزن بریم!» — بعد از جملهٔ آخر
-        if (t.value >= 0.80f) {
+        // ================== شمارنده‌های زنده ==================
+        androidx.compose.animation.AnimatedVisibility(
+            visible = tv >= 0.58f,
+            enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { it / 3 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 200.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val cp = easeOutCubic(((tv - 0.58f) / 0.26f).coerceIn(0f, 1f))
+                StatChip("فروش امروز", TableHeuristics.faMoney(18_500_000.0 * cp) + " تومان")
+                StatChip("مشتریان فعال", TableHeuristics.faMoney(2_120.0 * cp))
+                StatChip("گردش ماه", TableHeuristics.faMoney(864_000_000.0 * cp))
+            }
+        }
+
+        // ================== دکمهٔ ورود ==================
+        if (tv >= 0.80f) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 96.dp)
+                    .padding(bottom = 92.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(Brush.horizontalGradient(extras.goldGradient))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFF8A5E1E), Color(0xFFE9C777), Color(0xFFC9963C))
+                        )
+                    )
                     .clickable { SoundFx.success(); onDone() }
-                    .padding(horizontal = 26.dp, vertical = 12.dp),
+                    .padding(horizontal = 28.dp, vertical = 13.dp),
             ) {
                 Box(
                     Modifier
                         .size(9.dp)
                         .clip(CircleShape)
-                        .background(extras.goldOn.copy(alpha = 0.9f)),
+                        .background(Color(0xFFFFF3D0)),
                 )
                 Text(
-                    "بزن بریم! 🚀",
+                    "ورود به گزارش‌ها",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
-                    color = extras.goldOn,
+                    color = Color(0xFFFFF3D0),
                 )
             }
         }
@@ -384,11 +457,80 @@ fun PistachioIntro(onDone: () -> Unit) {
                 .padding(bottom = 22.dp),
         )
     }
+}
 
-    // پایان خودکار فیلم
-    LaunchedEffect(Unit) {
-        t.animateTo(1f, tween(9000, easing = LinearEasing))
-        delay(400)
-        onDone()
+/** چیپ آمار شیشه‌ای */
+@Composable
+private fun StatChip(label: String, value: String) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(13.dp))
+            .background(Color.White.copy(alpha = 0.07f))
+            .border(1.dp, Color(0xFFE9C777).copy(alpha = 0.30f), RoundedCornerShape(13.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        Text(
+            value,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Black,
+            color = Color(0xFFE9C777),
+            maxLines = 1,
+        )
+    }
+}
+
+/** پستهٔ کوچک واقعی — برای مشتی پسته روی میز */
+private fun DrawScope.drawMiniPistachio(cx: Float, cy: Float, r: Float, angle: Float, alpha: Float) {
+    // سایهٔ نرم
+    drawOval(
+        brush = Brush.radialGradient(
+            listOf(Color(0x26000000).copy(alpha = 0.5f * alpha), Color.Transparent),
+        ),
+        topLeft = Offset(cx - r * 1.15f, cy + r * 0.62f),
+        size = Size(r * 2.3f, r * 0.55f),
+    )
+    rotate(angle, pivot = Offset(cx, cy)) {
+        // بدنهٔ بادامی — گرادیان واقعی
+        val body = Path().apply {
+            moveTo(cx, cy - r)
+            cubicTo(cx + r * 0.85f, cy - r * 0.65f, cx + r * 0.95f, cy + r * 0.45f, cx + r * 0.15f, cy + r)
+            cubicTo(cx - r * 0.15f, cy + r, cx - r * 0.95f, cy + r * 0.45f, cx - r * 0.85f, cy - r * 0.65f)
+            close()
+        }
+        drawPath(
+            body,
+            brush = Brush.linearGradient(
+                listOf(Color(0xFFF0DBB2).copy(alpha = alpha), Color(0xFFCBA873).copy(alpha = alpha), Color(0xFF9A7847).copy(alpha = alpha)),
+                start = Offset(cx - r, cy - r),
+                end = Offset(cx + r * 0.6f, cy + r),
+            ),
+        )
+        drawPath(body, color = Color(0xFF7A5C33).copy(alpha = 0.8f * alpha), style = Stroke(r * 0.09f))
+        // شکاف
+        drawLine(
+            Color(0xFF7A5C33).copy(alpha = 0.75f * alpha),
+            Offset(cx, cy - r * 0.85f), Offset(cx + r * 0.08f, cy + r * 0.75f),
+            strokeWidth = r * 0.11f,
+            cap = StrokeCap.Round,
+        )
+        // مغز سبز کوچک
+        drawOval(
+            brush = Brush.radialGradient(
+                listOf(Color(0xFFA9C452).copy(alpha = alpha), Color(0xFF6E8F2A).copy(alpha = 0.9f * alpha)),
+            ),
+            topLeft = Offset(cx + r * 0.14f, cy - r * 0.34f),
+            size = Size(r * 0.34f, r * 0.5f),
+        )
+        // برق واقعی
+        drawOval(
+            brush = Brush.radialGradient(
+                listOf(Color.White.copy(alpha = 0.5f * alpha), Color.Transparent),
+            ),
+            topLeft = Offset(cx - r * 0.52f, cy - r * 0.55f),
+            size = Size(r * 0.55f, r * 0.38f),
+        )
     }
 }
