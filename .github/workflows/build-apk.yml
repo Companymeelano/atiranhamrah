@@ -97,7 +97,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v4.9.0-debug
-          name: "M•REPORT v4.8.1 — رفع باگ‌های اتصال: پشتیبانی IP:port و نوشتار SSMS، سه حالت رمزنگاری و عیب‌یابی دقیق"
+          name: "M•REPORT v4.9.0 — فندق، خزانه حرفه‌ای، یادآور با آلارم، حالت محلی"
           body: |
             نسخه ۲.۱.۰ — نمایشگر مدیریت دیتابیس آجیل و خشکبار
 
