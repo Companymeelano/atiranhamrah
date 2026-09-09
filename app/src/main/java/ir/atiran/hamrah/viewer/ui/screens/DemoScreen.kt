@@ -257,7 +257,7 @@ fun DemoScreen(vm: AppViewModel) {
     // شمارنده هشدارهای تازه — با باز کردن مرکز توجه صفر می‌شود
     val alertSeen by vm.alertSeen.collectAsState()
     val unseen = unseenAlertCount(alertSeen)
-    // فندق بعد از ورود سلام می‌کند (فقط اگر فعال باشد)
+    // پسته بعد از ورود سلام می‌کند (فقط اگر فعال باشد)
     LaunchedEffect(vm.ai.enabled) {
         if (vm.ai.enabled) {
             delay(1100)
@@ -347,7 +347,7 @@ fun DemoScreen(vm: AppViewModel) {
                                 }
                             }
                         }
-                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند فندق", size = 31.dp, tint = Color(0xFF8FB260)) {
+                        MrOrbButton(MrIcons.Spark, "دستیار هوشمند پسته", size = 31.dp, tint = Color(0xFF8FB260)) {
                             if (vm.ai.enabled) aiChatOpen = true else aiSettingsOpen = true
                             SoundFx.soft()
                         }
@@ -409,7 +409,7 @@ fun DemoScreen(vm: AppViewModel) {
                 )
             }
         }
-        // خوشامدگویی فندق — دستیار هوشمند
+        // خوشامدگویی پسته — دستیار هوشمند
         if (greetVisible) {
             AiGreetingOverlay(
                 text = AiBrain.greeting(

@@ -58,9 +58,9 @@ import kotlinx.coroutines.delay
 
 private data class AiMsg(val me: Boolean, val text: String)
 
-// ============================================================ گفتگو با فندق
+// ============================================================ گفتگو با پسته
 /**
- * دستیار هوشمند «فندق» — گفتگوی فارسی با تحلیل داده‌ها، حافظه‌ی اسم
+ * دستیار هوشمند «پسته» — گفتگوی فارسی با تحلیل داده‌ها، حافظه‌ی اسم
  * کاربر و لحن قابل‌تنظیم (شوخ/رسمی/خلاصه).
  */
 @Composable
@@ -115,17 +115,17 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
-                Fandogh(size = 38.dp, bobbing = false)
+                Pistachio(size = 38.dp, bobbing = false)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("فندق", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    Text("پسته", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     Text(
                         "دستیار هوشمند · متصل به داده‌ها",
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant,
                     )
                 }
-                MrOrbButton(MrIcons.Settings, "تنظیمات فندق", size = 32.dp) { onOpenSettings(); SoundFx.soft() }
+                MrOrbButton(MrIcons.Settings, "تنظیمات پسته", size = 32.dp) { onOpenSettings(); SoundFx.soft() }
                 Spacer(Modifier.width(6.dp))
                 MrOrbButton(MrIcons.Close, "بستن", size = 32.dp, tint = scheme.onSurfaceVariant) { onDismiss() }
             }
@@ -146,7 +146,7 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                     ) {
                         Row(verticalAlignment = Alignment.Bottom) {
                             if (!m.me) {
-                                Fandogh(size = 26.dp, bobbing = false)
+                                Pistachio(size = 26.dp, bobbing = false)
                                 Spacer(Modifier.width(6.dp))
                             }
                             Box(
@@ -240,7 +240,7 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
-                    placeholder = { Text("از فندق بپرس...") },
+                    placeholder = { Text("از پسته بپرس...") },
                     maxLines = 2,
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.weight(1f),
@@ -251,7 +251,7 @@ fun AiChatSheet(vm: AppViewModel, onDismiss: () -> Unit, onOpenSettings: () -> U
     }
 }
 
-// ============================================================ تنظیمات فندق
+// ============================================================ تنظیمات پسته
 @Composable
 fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
@@ -270,10 +270,10 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
         ) {
             // سربرگ
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Fandogh(size = 34.dp, bobbing = false)
+                Pistachio(size = 34.dp, bobbing = false)
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("دستیار هوشمند «فندق»", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    Text("دستیار هوشمند «پسته»", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     Text("تنظیمات، حافظه و لحن گفتار", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                 }
             }
@@ -282,7 +282,7 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("دستیار هوشمند", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                    Text("خوشامدگویی و گفتگو با فندق", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    Text("خوشامدگویی و گفتگو با پسته", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
                 }
                 Switch(
                     checked = vm.ai.enabled,
@@ -291,7 +291,7 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                 )
             }
 
-            // اسم کاربر — حافظه فندق (ذخیرهٔ فوری)
+            // اسم کاربر — حافظه پسته (ذخیرهٔ فوری)
             Text("اسم من چی باشه؟", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = scheme.primary)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -438,8 +438,8 @@ fun AiSettingsSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     }
 }
 
-// ============================================================ خوشامدگویی فندق
-/** حباب سلام فندق بعد از ورود — لمس فندق یا دکمه، گفتگو را باز می‌کند */
+// ============================================================ خوشامدگویی پسته
+/** حباب سلام پسته بعد از ورود — لمس پسته یا دکمه، گفتگو را باز می‌کند */
 @Composable
 fun AiGreetingOverlay(
     text: String,
@@ -458,7 +458,7 @@ fun AiGreetingOverlay(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Fandogh(size = 56.dp)
+            Pistachio(size = 56.dp)
             Column(
                 modifier = Modifier
                     .widthIn(max = 300.dp)

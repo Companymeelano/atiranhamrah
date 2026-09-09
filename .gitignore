@@ -8,3 +8,6 @@ captures/
 .externalNativeBuild/
 .cxx/
 .kotlin/
+
+# زیپ پیوست مرجع (نسخه قدیمی) — نباید در ریپو باشد
+/AtiranHamrahViewer.zip

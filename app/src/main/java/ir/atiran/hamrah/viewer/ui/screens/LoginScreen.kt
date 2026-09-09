@@ -147,7 +147,7 @@ fun LoginScreen(vm: AppViewModel) {
                 )
                 Spacer(Modifier.width(8.dp))
                 MrOrbButton(
-                    MrIcons.Spark, "دستیار هوشمند فندق",
+                    MrIcons.Spark, "دستیار هوشمند پسته",
                     tint = Color(0xFF8FB260),
                     onClick = { aiSheet = true; SoundFx.soft() },
                 )

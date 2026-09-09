@@ -169,6 +169,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } catch (_: Throwable) {
                 null
             }
+            // اتصال خودکار بخش‌های وصل‌نشده — با نام‌های واقعی تست‌شدهٔ Atiran
+            // (CUSTOMERS / inventory / sailfact / چک‌ها) از نسخهٔ ویندوز M•R
+            val ov = dbOverview ?: return@launch
+            val current = sectionMap.value
+            val detected = ir.atiran.hamrah.viewer.data.TableHeuristics.detectMap(ov.tables)
+            val merged = current.copy(
+                customers = current.customers ?: detected.customers,
+                products = current.products ?: detected.products,
+                invoices = current.invoices ?: detected.invoices,
+                checks = current.checks ?: detected.checks,
+                banks = current.banks ?: detected.banks,
+            )
+            if (merged != current) setSectionMap(merged)
         }
     }
 
@@ -211,7 +224,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** تنظیمات دستیار هوشمند «فندق» */
+    /** تنظیمات دستیار هوشمند «پسته» */
     var ai by mutableStateOf(AiSettings())
         private set
 
@@ -404,7 +417,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openDemo() {
         screen = Screen.Demo
-        // فندق ورود کاربر را می‌شمارد تا دفعه بعد شخصی سلام کند
+        // پسته ورود کاربر را می‌شمارد تا دفعه بعد شخصی سلام کند
         updateAi { it.copy(visits = it.visits + 1) }
     }
 

@@ -18,10 +18,10 @@ data class Experience(
     val ambient: Boolean = true,
 )
 
-/** تنظیمات دستیار هوشمند «فندق» */
+/** تنظیمات دستیار هوشمند «پسته» */
 data class AiSettings(
     val enabled: Boolean = true,
-    /** اسم کاربر — فندق برای همیشه یادش می‌سپارد */
+    /** اسم کاربر — پسته برای همیشه یادش می‌سپارد */
     val userName: String = "",
     /** لحن گفتار: شوخ | رسمی | خلاصه */
     val mode: String = "شوخ",
@@ -101,7 +101,7 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { it[Keys.heroOrder] = order }
     }
 
-    /** تنظیمات دستیار هوشمند فندق */
+    /** تنظیمات دستیار هوشمند پسته */
     val aiSettings: Flow<AiSettings> = context.dataStore.data.map { p ->
         AiSettings(
             enabled = p[Keys.aiEnabled] ?: true,

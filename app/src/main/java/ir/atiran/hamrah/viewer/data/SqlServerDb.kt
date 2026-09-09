@@ -144,7 +144,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         if (port != null) sb.append(":").append(port)
         sb.append(";databaseName=").append(cfg.database.trim())
         when (m) {
-            2 -> sb.append(";encrypt=false")
+            2 -> sb.append(";encrypt=false;trustServerCertificate=true")
             1 -> sb.append(";encrypt=true;trustServerCertificate=true;sslProtocol=TLS")
             else -> sb.append(";encrypt=true;trustServerCertificate=true")
         }
@@ -186,7 +186,7 @@ class SqlServerDb(private val cfg: DbSettings) {
      */
     private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
         var last: Throwable? = null
-        for (m in intArrayOf(0, 1, 2)) {
+        for (m in intArrayOf(2, 0, 1)) {
             try {
                 DriverManager.getConnection(urlFor(m, timeoutSec, port), props()).use { }
                 return null
@@ -261,13 +261,14 @@ class SqlServerDb(private val cfg: DbSettings) {
     }
 
     /**
-     * اتصال سه‌مرحله‌ای: TLS پیش‌فرض درایور → TLS با پروتکل JSSE → بدون رمزنگاری؛
+     * اتصال سه‌مرحله‌ای: بدون رمزنگاری (الگوی ثابت‌شدهٔ نسخهٔ ویندوز M•R که
+     * روی همین سرور جواب می‌دهد) → TLS پیش‌فرض درایور → TLS با پروتکل JSSE؛
      * حالت جواب‌داده به‌خاطر سپرده می‌شود تا اتصال‌های بعدی سریع باشند.
      */
     private fun open(): Connection {
         mode?.let { m -> return DriverManager.getConnection(urlFor(m), props()) }
         var last: Throwable? = null
-        for (m in intArrayOf(0, 1, 2)) {
+        for (m in intArrayOf(2, 0, 1)) {
             try {
                 return DriverManager.getConnection(urlFor(m), props()).also { mode = m }
             } catch (e: Throwable) {
@@ -446,13 +447,49 @@ class SqlServerDb(private val cfg: DbSettings) {
     private fun shortErr(e: Throwable): String =
         (e.javaClass.simpleName + ": " + (e.message ?: "")).replace("\n", " ").take(230)
 
+    /**
+     * جستجوی هوشمند جدول بین کاندیدها با اولویت — دقیقاً مثل نسخهٔ ویندوز M•R:
+     * از sys.tables اولین جدولِ مطابق با ترتیب اولویت را برمی‌گرداند («schema.table»).
+     */
+    suspend fun findTable(vararg candidates: String): String? = withContext(Dispatchers.IO) {
+        try {
+            open().use { c ->
+                val names = candidates.joinToString(",") { "'" + it.replace("'", "''") + "'" }
+                val prio = candidates.mapIndexed { i, n -> "WHEN '$n' THEN ${i + 1}" }.joinToString(" ")
+                c.createStatement().use { st ->
+                    st.executeQuery(
+                        "SELECT TOP (1) s.name + N'.' + t.name FROM sys.tables t " +
+                            "JOIN sys.schemas s ON s.schema_id = t.schema_id " +
+                            "WHERE t.name IN ($names) ORDER BY CASE t.name $prio ELSE 99 END"
+                    ).use { rs ->
+                        if (rs.next()) rs.getString(1) else null
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     // ------------------------------------------------------------ ورود
-    /** تست اتصال با نام کاربری/رمز — موفقیت = اعتبارنامه درست است. نسخه سرور را برمی‌گرداند. */
+    /**
+     * تست اتصال هوشمند با نام کاربری/رمز — مثل نسخهٔ ویندوز M•R:
+     * ۱) اتصال برقرار شود؛ ۲) دیتابیسِ فعال با دیتابیس انتخابی یکی باشد
+     * (خطای رایج «وصل شد ولی دیتابیس غلط» همین‌جا کشف می‌شود)؛
+     * خروجی: نسخه سرور.
+     */
     suspend fun test(): String = withContext(Dispatchers.IO) {
         open().use { c ->
             c.createStatement().use { st ->
-                st.executeQuery("SELECT @@VERSION").use { rs ->
-                    if (rs.next()) (rs.getString(1) ?: "").substringBefore('\n').trim() else ""
+                st.executeQuery("SELECT DB_NAME(), @@SERVERNAME, @@VERSION").use { rs ->
+                    if (!rs.next()) throw AtiranDbException("SQL Server پاسخ قابل استفاده‌ای برنگرداند")
+                    val active = rs.getString(1) ?: ""
+                    if (active.trim().equals(cfg.database.trim(), ignoreCase = true).not()) {
+                        throw AtiranDbException(
+                            "اتصال برقرار شد اما دیتابیس «" + active + "» فعال است؛ دیتابیس انتخابی «" + cfg.database.trim() + "» است"
+                        )
+                    }
+                    (rs.getString(3) ?: "").substringBefore('\n').trim()
                 }
             }
         }

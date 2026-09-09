@@ -106,14 +106,38 @@ object TableHeuristics {
 
     private val SECTION_STEMS = mapOf(
         "customers" to listOf("customer", "moshtar", "مشتری", "ashkh", "اشخاص", "person", "client", "partner", "طرف"),
-        "products" to listOf("kala", "کالا", "product", "item", "goods", "جنس", "merch"),
-        "invoices" to listOf("factor", "faktor", "فاکتور", "invoice", "sale", "forosh", "فروش", "order"),
+        "products" to listOf("kala", "کالا", "product", "item", "goods", "جنس", "merch", "inventory"),
+        "invoices" to listOf("factor", "faktor", "فاکتور", "invoice", "sale", "forosh", "فروش", "order", "sailfact"),
         "checks" to listOf("check", "cheque", "چک"),
         "banks" to listOf("bank", "بانک"),
     )
 
+    /**
+     * نام‌های واقعی جداول دیتابیس Atiran2 — برگرفته از نسخهٔ ویندوز M•R
+     * که روی همین سرور به‌صورت تست‌شده کار می‌کند (AtiranApiClient ویندوز).
+     * ترتیب = اولویت.
+     */
+    private val ATIRAN_TABLES = mapOf(
+        "customers" to listOf("CUSTOMERS"),
+        "products" to listOf("inventory"),
+        "invoices" to listOf("sailfact"),
+        "checks" to listOf("checks", "check", "cheques", "cheque", "check_detail"),
+        "banks" to listOf("banks", "bank"),
+    )
+
     /** بهترین جدول کاندید برای یک بخش — «schema.table» یا null */
     fun detectTable(section: String, tables: List<TableInfo>): String? {
+        // ۱) نام‌های واقعی تست‌شدهٔ Atiran — اول تطبیق دقیق (با اولویت کاندیدها)، بعد contains
+        ATIRAN_TABLES[section]?.let { candidates ->
+            for (cand in candidates) {
+                val exact = tables.firstOrNull { it.name.equals(cand, ignoreCase = true) }
+                if (exact != null) return exact.schema + "." + exact.name
+            }
+            for (cand in candidates) {
+                val hit = tables.firstOrNull { it.name.contains(cand, ignoreCase = true) }
+                if (hit != null) return hit.schema + "." + hit.name
+            }
+        }
         val stems = SECTION_STEMS[section] ?: return null
         var bestScore = 0
         var bestRef: String? = null
@@ -153,9 +177,11 @@ object TableHeuristics {
     private val AMOUNT_STEMS = listOf(
         "mablagh", "amount", "مبلغ", "price", "ghimat", "قیمت",
         "bedehkar", "bestankar", "mandeh", "mande", "مانده", "balance", "total", "jam", "جمع",
+        // ستون‌های مالی فاکتور Atiran (sailfact)
+        "allfel", "mabdaryaft", "tdf",
     )
     private val DATE_STEMS = listOf("date", "tarikh", "تاریخ")
-    private val CODE_STEMS = listOf("code", "shomare", "کد", "id")
+    private val CODE_STEMS = listOf("code", "shomare", "کد", "id", "shmo", "shka", "shfacfo")
 
     private fun findCol(cols: List<ColumnInfo>, stems: List<String>, numericOnly: Boolean = false): String? {
         val pool = if (numericOnly) cols.filter { it.type.lowercase() in NUMERIC_TYPES } else cols

@@ -1,9 +1,9 @@
 package ir.atiran.hamrah.viewer.ui.components
 
 /**
- * انیمیشن ورود M•REPORT — «فندق و گونی آجیل»
+ * انیمیشن ورود M•REPORT — «پسته و گونی آجیل»
  *
- * صحنه زنده: فندق گونیِ پر از آجیل را می‌کشد و حواسش نیست که آجیل‌ها
+ * صحنه زنده: پسته گونیِ پر از آجیل را می‌کشد و حواسش نیست که آجیل‌ها
  * سه‌بعدی از گونی بیرون می‌ریزند؛ وسط راه می‌ایستد، سرش را می‌خاراند،
  * به کاربر نگاه می‌کند، چشمک جذابی می‌زند و وارد برنامه می‌شود.
  * لمس صفحه = رد کردن انیمیشن.
@@ -61,7 +61,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 @Composable
-fun FandoghIntro(onDone: () -> Unit) {
+fun PistachioIntro(onDone: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val extras = LocalThemeExtras.current
     // خط زمانی کل صحنه: ۰ → ۱ در ۶.۸ ثانیه
@@ -114,14 +114,14 @@ fun FandoghIntro(onDone: () -> Unit) {
                 size = Size(w * 0.84f, h * 0.10f),
             )
 
-            // ---------- جای‌گذاری فندق و گونی
-            // فندق از راست به چپ گونی را می‌کشد (فاز ۰)، بعد می‌ایستد
+            // ---------- جای‌گذاری پسته و گونی
+            // پسته از راست به چپ گونی را می‌کشد (فاز ۰)، بعد می‌ایستد
             val pullT = (tv / 0.55f).coerceIn(0f, 1f)
             val ease = pullT * pullT * (3f - 2f * pullT) // smoothstep
             val bodyX = w * (0.68f - 0.40f * ease)
             val bodyY = groundY - h * 0.115f
 
-            // گونی پشت فندق (سمت راست) — با طناب به فندق
+            // گونی پشت پسته (سمت راست) — با طناب به پسته
             val sackX = bodyX + w * 0.155f
             val sackY = groundY - h * 0.085f
             val sackW = w * 0.21f
@@ -164,7 +164,7 @@ fun FandoghIntro(onDone: () -> Unit) {
                 drawCircle(Color(0xFF96633A), radius = sackW * 0.06f, center = Offset(sackX + sackW * 0.12f, sackY - sackH * 0.26f))
             }
 
-            // طناب — از دست فندق به گونی
+            // طناب — از دست پسته به گونی
             drawPath(
                 Path().apply {
                     moveTo(bodyX + w * 0.028f, bodyY + h * 0.055f)
@@ -177,7 +177,7 @@ fun FandoghIntro(onDone: () -> Unit) {
                 style = Stroke(2.2f, cap = StrokeCap.Round),
             )
 
-            // ---------- آجیل‌های سه‌بعدی که از گونی می‌ریزند (حواس فندق نیست!)
+            // ---------- آجیل‌های سه‌بعدی که از گونی می‌ریزند (حواس پسته نیست!)
             if (tv < 0.62f) {
                 val nutColors = listOf(
                     Color(0xFFC79263), Color(0xFF96633A), Color(0xFFB98A5A),
@@ -250,12 +250,12 @@ fun FandoghIntro(onDone: () -> Unit) {
             }
         }
 
-        // ---------- خود فندق — روی Canvas، با موقعیت و حالت فاز
+        // ---------- خود پسته — روی Canvas، با موقعیت و حالت فاز
         val tv = t.value
         val mood = when {
-            tv < 0.55f -> FandoghMood.Happy       // در حال کشیدن
-            tv < 0.78f -> FandoghMood.Think       // سرش را می‌خاراند
-            else -> FandoghMood.Wink              // چشمک جذاب
+            tv < 0.55f -> PistachioMood.Happy       // در حال کشیدن
+            tv < 0.78f -> PistachioMood.Think       // سرش را می‌خاراند
+            else -> PistachioMood.Wink              // چشمک جذاب
         }
         val wFraction = 0.68f - 0.40f * (tv / 0.55f).coerceIn(0f, 1f).let { p -> p * p * (3f - 2f * p) }
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -273,7 +273,7 @@ fun FandoghIntro(onDone: () -> Unit) {
                     )
                     .graphicsLayerTilt(scratchTilt)
             ) {
-                Fandogh(
+                Pistachio(
                     size = cw * 0.24f,
                     bobbing = tv < 0.55f,
                     mood = mood,
@@ -302,7 +302,7 @@ fun FandoghIntro(onDone: () -> Unit) {
             MrSubtitle("Intelligent Reporting Experience")
         }
 
-        // پیام فندق در فاز چشمک
+        // پیام پسته در فاز چشمک
         AnimatedVisibility(
             visible = tv >= 0.78f,
             enter = fadeIn(),
@@ -325,7 +325,7 @@ fun FandoghIntro(onDone: () -> Unit) {
                         .background(scheme.primary),
                 )
                 Text(
-                    "فندق رسید! بزن بریم 🌰",
+                    "پسته رسید! بزن بریم 🥜",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = scheme.onSurface,
@@ -344,6 +344,6 @@ fun FandoghIntro(onDone: () -> Unit) {
     }
 }
 
-/** کمکی: چرخش ملایم فندق هنگام خاراندن سر */
+/** کمکی: چرخش ملایم پسته هنگام خاراندن سر */
 private fun Modifier.graphicsLayerTilt(deg: Float): Modifier =
     this.graphicsLayer { rotationZ = deg }

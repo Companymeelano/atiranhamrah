@@ -29,7 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.atiran.hamrah.viewer.R
-import ir.atiran.hamrah.viewer.ui.components.FandoghIntro
+import ir.atiran.hamrah.viewer.ui.components.PistachioIntro
 import ir.atiran.hamrah.viewer.ui.screens.DemoScreen
 import ir.atiran.hamrah.viewer.ui.screens.LoginScreen
 import ir.atiran.hamrah.viewer.ui.screens.TableDataScreen
@@ -40,7 +40,7 @@ import ir.atiran.hamrah.viewer.ui.theme.AppThemeId
 @Composable
 fun AtiranApp(vm: AppViewModel) {
     val theme = AppThemeId.entries.getOrNull(vm.themeId) ?: AppThemeId.Obsidian
-    // انیمیشن ورود — فندق و گونی آجیل؛ یک‌بار در هر اجرای برنامه
+    // انیمیشن ورود — پسته و گونی آجیل؛ یک‌بار در هر اجرای برنامه
     var introDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     AtiranAppTheme(themeId = theme) {
@@ -53,7 +53,7 @@ fun AtiranApp(vm: AppViewModel) {
                 is Screen.Demo -> DemoScreen(vm)
             }
             if (!introDone) {
-                FandoghIntro(onDone = { introDone = true })
+                PistachioIntro(onDone = { introDone = true })
             }
         }
     }
