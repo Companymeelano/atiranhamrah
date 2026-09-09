@@ -53,6 +53,8 @@ class SettingsStore(private val context: Context) {
         val aiMode = stringPreferencesKey("aiMode")
         val aiDomains = stringPreferencesKey("aiDomains")
         val aiVisits = intPreferencesKey("aiVisits")
+        val aiOnline = booleanPreferencesKey("aiOnline")
+        val aiKey = stringPreferencesKey("aiKey")
         val myCharts = stringPreferencesKey("myCharts")
         val alertSeen = stringPreferencesKey("alertSeen")
         val notifDone = stringPreferencesKey("notifDone")
@@ -109,6 +111,8 @@ class SettingsStore(private val context: Context) {
             mode = (p[Keys.aiMode] ?: "شوخ"),
             domains = (p[Keys.aiDomains] ?: "کالاها,مشتریان,مطالبات,چک‌ها,گزارش‌ها").split(",").filter { it.isNotBlank() }.toSet(),
             visits = p[Keys.aiVisits] ?: 0,
+            online = p[Keys.aiOnline] ?: true,
+            apiKey = p[Keys.aiKey] ?: "",
         )
     }
 

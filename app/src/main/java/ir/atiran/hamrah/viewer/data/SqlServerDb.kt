@@ -57,7 +57,7 @@ class SqlServerDb(private val cfg: DbSettings) {
             val m = e.message ?: e.toString()
             return when {
                 m.contains("Login failed", ignoreCase = true) ->
-                    "نام کاربری یا رمز عبور SQL Server اشتباه است"
+                    "سرور در دسترس است ✓ اما نام کاربری یا رمز عبور رد شد — همان رمزی که در برنامهٔ ویندوزی کار می‌کند را وارد کنید (رمز SQL Server کاربر AdminAn)"
                 m.contains("Cannot open database", ignoreCase = true) ->
                     "دیتابیس مورد نظر باز نشد — نام دیتابیس یا دسترسی کاربر را بررسی کنید"
                 m.contains("The TCP/IP connection to the host", ignoreCase = true) ||
@@ -243,7 +243,7 @@ class SqlServerDb(private val cfg: DbSettings) {
      */
     private fun quickConnect(port: Int? = null, timeoutSec: Int = 10): Throwable? {
         var last: Throwable? = null
-        for (m in intArrayOf(0, 1, 2, 3, 4, 5)) {
+        for (m in intArrayOf(1, 0, 2, 3, 4, 5)) {
             try {
                 connectOnce(m, timeoutSec, port).use { }
                 return null
@@ -389,8 +389,8 @@ class SqlServerDb(private val cfg: DbSettings) {
             }
         }
         var last: Throwable? = null
-        // ترتیب: الگوی ویندوز (بدون رمزنگاری) → jTDS بدون TLS → TLS → TLS/JSSE
-        for (m in intArrayOf(0, 1, 2, 3, 4, 5)) {
+        // ترتیب: jTDS بدون TLS (اثبات‌شده با پروب CI) → الگوی ویندوز → TLS → TLS/JSSE
+        for (m in intArrayOf(1, 0, 2, 3, 4, 5)) {
             try {
                 return connectOnce(m).also {
                     mode = m
@@ -540,7 +540,7 @@ class SqlServerDb(private val cfg: DbSettings) {
         try {
             var connectedMode = -1
             var modeErr: Throwable? = null
-            for (m in intArrayOf(0, 1, 2, 3, 4, 5)) {
+            for (m in intArrayOf(1, 0, 2, 3, 4, 5)) {
                 try {
                     connectOnce(m, 15).use { }
                     connectedMode = m
